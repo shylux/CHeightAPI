@@ -2,14 +2,19 @@
   "name": "sunneplatz",
   "version": "1.0.0",
   "description": "",
-  "main": "webpack.config.js",
+  "main": "frontend.config.js",
   "dependencies": {
+    "@types/express": "^4.16.0",
     "@types/jquery": "^3.3.10",
+    "@types/papaparse": "^4.5.4",
     "@types/three": "^0.92.23",
+    "express": "^4.16.3",
     "jquery": "^3.3.1",
+    "papaparse": "^4.6.0",
     "three": "^0.96.0",
     "ts-loader": "^5.2.0",
-    "typescript": "^3.0.3"
+    "typescript": "^3.0.3",
+    "webpack-node-externals": "^1.7.2"
   },
   "devDependencies": {
     "awesome-typescript-loader": "^5.2.1",

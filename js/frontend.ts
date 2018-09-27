@@ -1,5 +1,5 @@
 import * as $ from "jquery";
-import * as THREE from "THREE";
+import * as THREE from "three";
 import "./OrbitControls.js";
 
 $(document).ready(main);
