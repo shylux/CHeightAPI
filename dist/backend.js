@@ -98,6 +98,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var express = __webpack_require__(/*! express */ "express");
 var fs = __webpack_require__(/*! fs */ "fs");
+var DataPoint = /** @class */ (function () {
+    function DataPoint(lat, long, height) {
+        this.lat = lat;
+        this.long = long;
+        this.height = height;
+    }
+    return DataPoint;
+}());
 var CHeightAPI = /** @class */ (function () {
     function CHeightAPI() {
         this.data_source_path = './hoehe_test.csv';
@@ -133,10 +141,95 @@ var CHeightAPI = /** @class */ (function () {
     };
     CHeightAPI.prototype.mountRoutes = function () {
         var router = express.Router();
-        router.get('/', function (req, res) {
-            res.json({ message: "Hello World" });
-        });
+        router.get('/', this.handleRequest.bind(this));
         this.express.use('/', router);
+    };
+    CHeightAPI.prototype.handleRequest = function (req, res, next) {
+        var _a;
+        res.setHeader("Content-Type", "application/vnd.api+json");
+        try {
+            var lat = void 0, long = void 0, resolution = void 0, batchSize = void 0;
+            _a = this.parseRequestParameter(req), lat = _a[0], long = _a[1], resolution = _a[2], batchSize = _a[3];
+            var batchEdgeLength = Math.sqrt(batchSize);
+            if (batchEdgeLength % 1 !== 0)
+                throw "batch-size has to be a power of 2.";
+            if (resolution === 0) { // pick resolution, that whole map fits in
+                var maxEdgeLength = Math.max(this.data.length, this.data[0].length);
+                var detailLevels = Math.ceil(this.getBaseLog(batchEdgeLength, maxEdgeLength)) - 1;
+                resolution = Math.pow(batchEdgeLength, detailLevels);
+            }
+            var matrix = this.loadMapSubset(lat, long, resolution, batchEdgeLength);
+            res.json({ data: {
+                    type: 'height-data',
+                    id: resolution + "-" + batchSize + "-" + lat + "-" + long,
+                    attributes: {
+                        resolution: resolution,
+                        'batch-size': batchSize,
+                        matrix: matrix
+                    }
+                } });
+        }
+        catch (err) {
+            if (typeof err === 'string') {
+                res.status(400);
+                res.json({
+                    errors: [{ 'title': err }]
+                });
+            }
+            else {
+                res.status(500);
+                res.json({
+                    errors: [{
+                            title: err.toString(),
+                            meta: {
+                                message: err.message,
+                                stack: err.stack
+                            }
+                        }]
+                });
+                throw err;
+            }
+        }
+    };
+    // checks that every parameter is present
+    CHeightAPI.prototype.parseRequestParameter = function (req) {
+        var req_params = Object.keys(req.query);
+        // check if params are present
+        if (!['lat', 'long', 'resolution', 'batch-size'].every(function (val) { return req_params.includes(val); }))
+            throw "Missing parameter. Provide 'lat', 'long', 'resolution and 'batch-size'.";
+        var params_str = [req.query.lat, req.query.long, req.query.resolution, req.query['batch-size']];
+        // convert params to int
+        var params_int = params_str.map(function (val) {
+            var integer = parseInt(val);
+            if (isNaN(integer))
+                throw "All parameters have to be integers: " + val;
+            return integer;
+        });
+        return params_int;
+    };
+    CHeightAPI.prototype.loadMapSubset = function (lat, long, resolution, batchEdgeLength) {
+        var matrix = [];
+        for (var y = 0, ilat = lat; y <= batchEdgeLength; y++, ilat += resolution) {
+            matrix[y] = [];
+            for (var x = 0, ilong = long; x <= batchEdgeLength; x++, ilong += resolution) {
+                matrix[y][x] = this.getDataPoint(ilat, ilong);
+            }
+        }
+        return matrix;
+    };
+    CHeightAPI.prototype.getDataPoint = function (lat, long) {
+        var height = -1;
+        if (lat >= 0 && lat < this.data.length &&
+            long >= 0 && long < this.data[0].length)
+            height = this.data[lat][long];
+        return {
+            lat: lat,
+            long: long,
+            height: height
+        };
+    };
+    CHeightAPI.prototype.getBaseLog = function (base, val) {
+        return Math.log(val) / Math.log(base);
     };
     return CHeightAPI;
 }());
