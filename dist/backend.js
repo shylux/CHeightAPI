@@ -96,23 +96,13 @@
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var express = __webpack_require__(/*! express */ "express");
 var fs = __webpack_require__(/*! fs */ "fs");
-var DataPoint = /** @class */ (function () {
-    function DataPoint(lat, long, height) {
-        this.lat = lat;
-        this.long = long;
-        this.height = height;
-    }
-    return DataPoint;
-}());
+var CHeightAPIShared_1 = __webpack_require__(/*! ./CHeightAPIShared */ "./js/CHeightAPIShared.ts");
 var CHeightAPI = /** @class */ (function () {
     function CHeightAPI() {
         this.data_source_path = './hoehe_test.csv';
-        this.express = express();
         var csv_string = this.loadCSVFile();
         this.data = this.parseCSVString(csv_string);
-        this.mountRoutes();
     }
     CHeightAPI.prototype.loadCSVFile = function () {
         process.stdout.write("Started loading data source: " + this.data_source_path + "... ");
@@ -139,13 +129,13 @@ var CHeightAPI = /** @class */ (function () {
         process.stdout.write("\nLoaded " + matrix.length + "x" + matrix[0].length + " Matrix\n");
         return matrix;
     };
-    CHeightAPI.prototype.mountRoutes = function () {
-        var router = express.Router();
-        router.get('/', this.handleRequest.bind(this));
-        this.express.use('/', router);
-    };
     CHeightAPI.prototype.handleRequest = function (req, res, next) {
         var _a;
+        // only hanle jsonapi requests
+        if (req.header('Content-Type') !== "application/vnd.api+json") {
+            next();
+            return;
+        }
         res.setHeader("Content-Type", "application/vnd.api+json");
         try {
             var lat = void 0, long = void 0, resolution = void 0, batchSize = void 0;
@@ -159,7 +149,8 @@ var CHeightAPI = /** @class */ (function () {
                 resolution = Math.pow(batchEdgeLength, detailLevels);
             }
             var matrix = this.loadMapSubset(lat, long, resolution, batchEdgeLength);
-            res.json({ data: {
+            res.json({
+                data: {
                     type: 'height-data',
                     id: resolution + "-" + batchSize + "-" + lat + "-" + long,
                     attributes: {
@@ -167,7 +158,12 @@ var CHeightAPI = /** @class */ (function () {
                         'batch-size': batchSize,
                         matrix: matrix
                     }
-                } });
+                },
+                meta: {
+                    maxLat: this.data.length,
+                    maxLong: this.data[0].length
+                }
+            });
         }
         catch (err) {
             if (typeof err === 'string') {
@@ -222,18 +218,53 @@ var CHeightAPI = /** @class */ (function () {
         if (lat >= 0 && lat < this.data.length &&
             long >= 0 && long < this.data[0].length)
             height = this.data[lat][long];
-        return {
-            lat: lat,
-            long: long,
-            height: height
-        };
+        return new CHeightAPIShared_1.default(lat, long, height);
     };
     CHeightAPI.prototype.getBaseLog = function (base, val) {
         return Math.log(val) / Math.log(base);
     };
     return CHeightAPI;
 }());
-exports.default = new CHeightAPI().express;
+exports.default = CHeightAPI;
+
+
+/***/ }),
+
+/***/ "./js/CHeightAPIShared.ts":
+/*!********************************!*\
+  !*** ./js/CHeightAPIShared.ts ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "three");
+var DataPoint = /** @class */ (function () {
+    function DataPoint(lat, long, height) {
+        this.lat = lat;
+        this.long = long;
+        this.height = height;
+    }
+    DataPoint.load = function (obj) {
+        return new DataPoint(obj.lat, obj.long, obj.height);
+    };
+    DataPoint.prototype.equals = function (other) {
+        return (this.lat === other.lat &&
+            this.long === other.long &&
+            this.height === other.height);
+    };
+    DataPoint.prototype.vector3 = function () {
+        //TODO: move scale to backend
+        return new three_1.Vector3(this.long, this.height / 1000.0, this.lat);
+    };
+    DataPoint.prototype.isInMap = function () {
+        return (this.height > 0);
+    };
+    return DataPoint;
+}());
+exports.default = DataPoint;
 
 
 /***/ }),
@@ -249,8 +280,15 @@ exports.default = new CHeightAPI().express;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var CHeightAPI_1 = __webpack_require__(/*! ./CHeightAPI */ "./js/CHeightAPI.ts");
+var express = __webpack_require__(/*! express */ "express");
+var api = new CHeightAPI_1.default();
 var port = process.env.PORT || 8080;
-CHeightAPI_1.default.listen(port, function (err) {
+var app = express();
+var router = express.Router();
+router.get('/', api.handleRequest.bind(api));
+app.use('/', router);
+app.use(express.static('.'));
+app.listen(port, function (err) {
     if (err) {
         return console.log(err);
     }
@@ -279,6 +317,17 @@ module.exports = require("express");
 /***/ (function(module, exports) {
 
 module.exports = require("fs");
+
+/***/ }),
+
+/***/ "three":
+/*!************************!*\
+  !*** external "three" ***!
+  \************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = require("three");
 
 /***/ })
 

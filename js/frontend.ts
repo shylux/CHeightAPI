@@ -1,11 +1,14 @@
 import * as $ from "jquery";
 import * as THREE from "three";
 import "./OrbitControls.js";
+import PatchHeightMap from "./PatchHeightMap";
 
 $(document).ready(main);
 
 function main() {
     const container = $('#container');
+
+
 
     // Set the scene size.
     const WIDTH = container.width();
@@ -26,6 +29,8 @@ function main() {
 
     const scene = new THREE.Scene();
     scene.add(camera);
+
+    const map = new PatchHeightMap(scene);
 
     // add sphere
     const material = new THREE.MeshBasicMaterial({color: 0x333333, wireframe: true});
@@ -79,7 +84,7 @@ function main() {
         }
         plane.rotation.x = -Math.PI / 2;
         camera.position.set(0, data.length, -data.length);
-        scene.add(plane);
+        //scene.add(plane);
     }
 
 

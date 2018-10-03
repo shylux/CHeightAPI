@@ -86,6 +86,45 @@
 /************************************************************************/
 /******/ ({
 
+/***/ "./js/CHeightAPIShared.ts":
+/*!********************************!*\
+  !*** ./js/CHeightAPIShared.ts ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var DataPoint = /** @class */ (function () {
+    function DataPoint(lat, long, height) {
+        this.lat = lat;
+        this.long = long;
+        this.height = height;
+    }
+    DataPoint.load = function (obj) {
+        return new DataPoint(obj.lat, obj.long, obj.height);
+    };
+    DataPoint.prototype.equals = function (other) {
+        return (this.lat === other.lat &&
+            this.long === other.long &&
+            this.height === other.height);
+    };
+    DataPoint.prototype.vector3 = function () {
+        //TODO: move scale to backend
+        return new three_1.Vector3(this.long, this.height / 1000.0, this.lat);
+    };
+    DataPoint.prototype.isInMap = function () {
+        return (this.height > 0);
+    };
+    return DataPoint;
+}());
+exports.default = DataPoint;
+
+
+/***/ }),
+
 /***/ "./js/OrbitControls.js":
 /*!*****************************!*\
   !*** ./js/OrbitControls.js ***!
@@ -1153,6 +1192,128 @@ Object.defineProperties( three__WEBPACK_IMPORTED_MODULE_0__["OrbitControls"].pro
 
 /***/ }),
 
+/***/ "./js/PatchHeightMap.ts":
+/*!******************************!*\
+  !*** ./js/PatchHeightMap.ts ***!
+  \******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var jquery_1 = __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js");
+var CHeightAPIShared_1 = __webpack_require__(/*! ./CHeightAPIShared */ "./js/CHeightAPIShared.ts");
+var PatchHeightMap = /** @class */ (function () {
+    function PatchHeightMap(scene) {
+        this.vertIdx = 0;
+        this.material = new three_1.MeshBasicMaterial({ color: 0x333333, wireframe: true });
+        this.batchSize = 16;
+        this.enhancableList = [];
+        this.scene = scene;
+        this.loadInitialMap();
+    }
+    PatchHeightMap.prototype.loadInitialMap = function () {
+        this.loadMapSubset(0, 0);
+    };
+    PatchHeightMap.prototype.loadNextMapSubset = function () {
+        if (this.enhancableList.length === 0)
+            return;
+        var _a = this.enhancableList.shift(), point = _a[0], resolution = _a[1];
+        this.loadMapSubset(point.lat, point.long, resolution);
+    };
+    PatchHeightMap.prototype.loadMapSubset = function (lat, long, resolution) {
+        var _this = this;
+        if (!resolution)
+            resolution = 0;
+        jquery_1.ajax('/', {
+            contentType: 'application/vnd.api+json',
+            method: 'GET',
+            data: {
+                lat: lat,
+                long: long,
+                resolution: resolution,
+                'batch-size': this.batchSize
+            },
+            success: function (msg) {
+                _this.createGeometry(msg.meta);
+                // convert to DataPoint class
+                var matrix = msg.data.attributes.matrix;
+                for (var y = 0; y < matrix.length; y++) {
+                    matrix[y] = matrix[y].map(function (obj) { return CHeightAPIShared_1.default.load(obj); });
+                }
+                _this.addMapSubset(matrix, msg.data.attributes.resolution);
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                debugger;
+            }
+        });
+    };
+    PatchHeightMap.prototype.createGeometry = function (meta) {
+        if (this.geometry)
+            return;
+        this.geometry = new three_1.BufferGeometry();
+        // length: resoluton * 2 faces per square * 3 vertices * 3 values per vertice
+        this.vertices = new Float32Array(parseInt(meta.maxLat) * parseInt(meta.maxLong) * 2 * 3 * 3);
+        this.geometry.addAttribute('position', new three_1.BufferAttribute(this.vertices, 3));
+        this.mesh = new three_1.Mesh(this.geometry, this.material);
+        this.scene.add(this.mesh);
+    };
+    PatchHeightMap.prototype.addMapSubset = function (matrix, resolution) {
+        for (var y = 0; y < matrix.length - 1; y++) {
+            for (var x = 0; x < matrix[0].length - 1; x++) {
+                // the four points of the segment: orig, down, right, diag
+                var segment = [matrix[y][x], matrix[y + 1][x], matrix[y][x + 1], matrix[y + 1][x + 1]];
+                if (resolution > 1 && segment.some(function (point) { return point.isInMap(); }))
+                    this.enhancableList.push([matrix[y][x], resolution / Math.sqrt(this.batchSize)]);
+                // check if the current segment is complete (no datapoints out of map)
+                if (!segment.every(function (point) { return point.isInMap(); }))
+                    continue;
+                //let idxs: number[] = segment.map(this.getVectorIndex.bind(this));
+                //TODO: remove existing faces
+                this.addSegment(segment);
+                //this.geometry.faces.push(new Face3(idxs[0], idxs[1], idxs[3]));
+                //this.geometry.faces.push(new Face3(idxs[0], idxs[3], idxs[2]));
+            }
+        }
+        this.loadNextMapSubset();
+        // if (this.vertIdx < 10000) {
+        //     this.loadNextMapSubset();
+        // } else {
+        //     debugger;
+        // }
+    };
+    PatchHeightMap.prototype.addSegment = function (segment) {
+        this.vertices[this.vertIdx] = segment[0].vector3().x;
+        this.vertices[this.vertIdx + 1] = segment[0].vector3().y;
+        this.vertices[this.vertIdx + 2] = segment[0].vector3().z;
+        this.vertices[this.vertIdx + 3] = segment[1].vector3().x;
+        this.vertices[this.vertIdx + 4] = segment[1].vector3().y;
+        this.vertices[this.vertIdx + 5] = segment[1].vector3().z;
+        this.vertices[this.vertIdx + 6] = segment[3].vector3().x;
+        this.vertices[this.vertIdx + 7] = segment[3].vector3().y;
+        this.vertices[this.vertIdx + 8] = segment[3].vector3().z;
+        this.vertIdx += 9;
+        this.vertices[this.vertIdx] = segment[0].vector3().x;
+        this.vertices[this.vertIdx + 1] = segment[0].vector3().y;
+        this.vertices[this.vertIdx + 2] = segment[0].vector3().z;
+        this.vertices[this.vertIdx + 3] = segment[3].vector3().x;
+        this.vertices[this.vertIdx + 4] = segment[3].vector3().y;
+        this.vertices[this.vertIdx + 5] = segment[3].vector3().z;
+        this.vertices[this.vertIdx + 6] = segment[2].vector3().x;
+        this.vertices[this.vertIdx + 7] = segment[2].vector3().y;
+        this.vertices[this.vertIdx + 8] = segment[2].vector3().z;
+        this.vertIdx += 9;
+        this.geometry.addAttribute('position', new three_1.BufferAttribute(this.vertices, 3));
+    };
+    return PatchHeightMap;
+}());
+exports.default = PatchHeightMap;
+
+
+/***/ }),
+
 /***/ "./js/frontend.ts":
 /*!************************!*\
   !*** ./js/frontend.ts ***!
@@ -1166,6 +1327,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var $ = __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js");
 var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 __webpack_require__(/*! ./OrbitControls.js */ "./js/OrbitControls.js");
+var PatchHeightMap_1 = __webpack_require__(/*! ./PatchHeightMap */ "./js/PatchHeightMap.ts");
 $(document).ready(main);
 function main() {
     var container = $('#container');
@@ -1184,6 +1346,7 @@ function main() {
     var controls = new THREE.OrbitControls(camera, renderer.domElement);
     var scene = new THREE.Scene();
     scene.add(camera);
+    var map = new PatchHeightMap_1.default(scene);
     // add sphere
     var material = new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true });
     // light
@@ -1229,7 +1392,7 @@ function main() {
         }
         plane.rotation.x = -Math.PI / 2;
         camera.position.set(0, data.length, -data.length);
-        scene.add(plane);
+        //scene.add(plane);
     }
 }
 

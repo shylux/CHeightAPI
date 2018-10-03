@@ -1,32 +1,17 @@
-import * as express from 'express';
 import {Express, Request, Response, NextFunction} from "express";
 import * as fs from "fs";
+import DataPoint from "./CHeightAPIShared";
 
-class DataPoint {
-    lat: number;
-    long: number;
-    height: number;
 
-    constructor(lat: number, long: number, height: number) {
-        this.lat = lat;
-        this.long = long;
-        this.height = height;
-    }
-}
-
-class CHeightAPI {
+export default class CHeightAPI {
     public express: Express;
 
     private readonly data_source_path: string = './hoehe_test.csv';
     private data: number[][];
 
     constructor() {
-        this.express = express();
-
         let csv_string = this.loadCSVFile();
         this.data = this.parseCSVString(csv_string);
-
-        this.mountRoutes();
     }
 
     private loadCSVFile(): string {
@@ -59,13 +44,13 @@ class CHeightAPI {
         return matrix;
     }
 
-    private mountRoutes(): void {
-        const router = express.Router();
-        router.get('/', this.handleRequest.bind(this));
-        this.express.use('/', router);
-    }
+    public handleRequest(req: Request, res: Response, next: NextFunction): void {
+        // only hanle jsonapi requests
+        if (req.header('Content-Type') !== "application/vnd.api+json") {
+            next();
+            return;
+        }
 
-    private handleRequest(req: Request, res: Response, next: NextFunction): void {
         res.setHeader("Content-Type", "application/vnd.api+json");
         try {
             let lat: number, long: number, resolution: number, batchSize: number;
@@ -82,15 +67,21 @@ class CHeightAPI {
 
             let matrix: DataPoint[][] = this.loadMapSubset(lat, long, resolution, batchEdgeLength);
 
-            res.json({data: {
-                type: 'height-data',
-                id: `${resolution}-${batchSize}-${lat}-${long}`,
-                attributes: {
-                    resolution: resolution,
-                    'batch-size': batchSize,
-                    matrix: matrix
+            res.json({
+                data: {
+                    type: 'height-data',
+                    id: `${resolution}-${batchSize}-${lat}-${long}`,
+                    attributes: {
+                        resolution: resolution,
+                        'batch-size': batchSize,
+                        matrix: matrix
+                    }
+                },
+                meta: {
+                    maxLat: this.data.length,
+                    maxLong: this.data[0].length
                 }
-            }});
+            });
         } catch(err) {
             if (typeof err === 'string') {
                 res.status(400);
@@ -149,17 +140,10 @@ class CHeightAPI {
         if (lat >= 0 && lat < this.data.length &&
             long >=0 && long < this.data[0].length)
             height = this.data[lat][long];
-        return {
-            lat: lat,
-            long: long,
-            height: height
-        }
+        return new DataPoint(lat, long, height);
     }
 
     private getBaseLog(base: number, val: number): number {
         return Math.log(val) / Math.log(base);
     }
 }
-
-
-export default new CHeightAPI().express;
