@@ -3,7 +3,7 @@ import * as fs from "fs";
 import DataPoint from "./CHeightAPIShared";
 
 
-const data_source_path: string = './hoehe_test.csv';
+const data_source_path: string = './hoehe_ch.csv';
 
 
 async function loadFromCSV() {

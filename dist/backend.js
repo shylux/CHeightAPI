@@ -436,6 +436,8 @@ var HeightMapDataStore = /** @class */ (function () {
                 switch (_a.label) {
                     case 0:
                         this.checkConnected();
+                        if (rawPoints.length === 0)
+                            return [2 /*return*/];
                         query = "INSERT INTO " + this.db_data_table_name + " VALUES ";
                         query_parts = [];
                         for (i = 0; i < rawPoints.length; i++) {
@@ -492,7 +494,7 @@ var HeightMapDataStore = /** @class */ (function () {
                             if (err)
                                 reject(err);
                             else if (!row)
-                                return -1;
+                                resolve(-1);
                             else
                                 resolve(row.height);
                         });

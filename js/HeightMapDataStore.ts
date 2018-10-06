@@ -1,6 +1,5 @@
 import {Database} from "sqlite3";
 import DataPoint, {HeightMapMetadata} from "./CHeightAPIShared";
-import {rejects} from "assert";
 
 
 export default class HeightMapDataStore {
@@ -56,6 +55,8 @@ export default class HeightMapDataStore {
     async storeAll(rawPoints: number[][]) {
         this.checkConnected();
 
+        if (rawPoints.length === 0) return;
+
         let query: string = `INSERT INTO ${this.db_data_table_name} VALUES `;
         let query_parts = [];
         for (let i = 0; i < rawPoints.length; i++) {
@@ -91,7 +92,7 @@ export default class HeightMapDataStore {
         return new Promise<number>((resolve, reject) => {
             this.db.get(`SELECT height FROM ${this.db_data_table_name} WHERE lat = ${lat} AND long = ${long};`, (err, row) => {
                 if (err) reject(err);
-                else if (!row) return -1;
+                else if (!row) resolve(-1);
                 else resolve(row.height);
             });
         });

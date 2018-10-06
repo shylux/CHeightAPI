@@ -240,6 +240,8 @@ var HeightMapDataStore = /** @class */ (function () {
                 switch (_a.label) {
                     case 0:
                         this.checkConnected();
+                        if (rawPoints.length === 0)
+                            return [2 /*return*/];
                         query = "INSERT INTO " + this.db_data_table_name + " VALUES ";
                         query_parts = [];
                         for (i = 0; i < rawPoints.length; i++) {
@@ -296,7 +298,7 @@ var HeightMapDataStore = /** @class */ (function () {
                             if (err)
                                 reject(err);
                             else if (!row)
-                                return -1;
+                                resolve(-1);
                             else
                                 resolve(row.height);
                         });
@@ -403,7 +405,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var HeightMapDataStore_1 = __webpack_require__(/*! ./HeightMapDataStore */ "./js/HeightMapDataStore.ts");
 var fs = __webpack_require__(/*! fs */ "fs");
 var CHeightAPIShared_1 = __webpack_require__(/*! ./CHeightAPIShared */ "./js/CHeightAPIShared.ts");
-var data_source_path = './hoehe_test.csv';
+var data_source_path = './hoehe_ch.csv';
 function loadFromCSV() {
     return __awaiter(this, void 0, void 0, function () {
         var csv_string, rows, minLat, minLong, maxLat, maxLong, i, row, row_data, j, height;

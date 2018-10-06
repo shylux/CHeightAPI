@@ -1,4 +1,4 @@
-import {BufferAttribute, BufferGeometry, Face3, Geometry, Group, Mesh, MeshBasicMaterial, Scene, Vector3} from "three";
+import {Face3, Geometry, Group, Mesh, MeshBasicMaterial, Scene} from "three";
 import {ajax} from "jquery";
 import DataPoint from "./CHeightAPIShared";
 
