@@ -10,7 +10,8 @@ module.exports = {
   watch: true,
 
   entry: {
-    backend: "./js/backend.ts"
+    backend: "./js/backend.ts",
+    import: "./js/import.ts"
   },
   output: {
     filename: "[name].js",

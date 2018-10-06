@@ -1,22 +1,21 @@
-import {BufferAttribute, BufferGeometry, Face3, Geometry, Mesh, MeshBasicMaterial, Scene, Vector3} from "three";
+import {BufferAttribute, BufferGeometry, Face3, Geometry, Group, Mesh, MeshBasicMaterial, Scene, Vector3} from "three";
 import {ajax} from "jquery";
 import DataPoint from "./CHeightAPIShared";
 
 
 class PatchHeightMap {
     private scene: Scene;
+    private group: Group = new Group();
     private readonly material = new MeshBasicMaterial({color: 0x333333, wireframe: true});
-    private readonly batchSize: number = 16;
+    private readonly batchSize: number = 64;
 
     private patches: any = {};
     private enhancableList: [DataPoint, number][] = [];
 
     constructor(scene: Scene) {
         this.scene = scene;
-        this.loadInitialMap();
-    }
-
-    private loadInitialMap(): void {
+        this.scene.add(this.group);
+        this.group.rotateY(-Math.PI / 2);
         this.loadMapSubset(0, 0);
     }
 
@@ -28,7 +27,7 @@ class PatchHeightMap {
 
     private loadMapSubset(lat: number, long: number, resolution?: number) {
         if (!resolution) resolution = 0;
-        ajax('/', {
+        ajax('', {
             contentType: 'application/vnd.api+json',
             method: 'GET',
             data: {
@@ -38,6 +37,8 @@ class PatchHeightMap {
                 'batch-size': this.batchSize
             },
             success: (msg: any) => {
+                if (this.group.position.x === 0)
+                    this.group.position.set(msg.meta.maxLong, 0, 0);
 
                 // convert to DataPoint class
                 let matrix: any[][] = msg.data.attributes.matrix as DataPoint[][];
@@ -80,13 +81,13 @@ class PatchHeightMap {
         geometry.computeBoundingBox();
         let mesh: Mesh = new Mesh(geometry, this.material);
         this.patches[`${resolution}-${matrix[0][0].lat}-${matrix[0][0].long}`] = mesh;
-        this.scene.add(mesh);
+        this.group.add(mesh);
 
         // remove lower resolution patch that has been enhanced
         let oldKey = `${resolution*Math.sqrt(this.batchSize)}-${matrix[0][0].lat}-${matrix[0][0].long}`;
         if (oldKey in this.patches) {
             let oldMesh = this.patches[oldKey];
-            this.scene.remove(oldMesh);
+            this.group.remove(oldMesh);
             oldMesh.geometry.dispose();
             delete this.patches[oldKey];
         }

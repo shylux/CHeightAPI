@@ -97,6 +97,12 @@
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var HeightMapMetadata = /** @class */ (function () {
+    function HeightMapMetadata() {
+    }
+    return HeightMapMetadata;
+}());
+exports.HeightMapMetadata = HeightMapMetadata;
 var DataPoint = /** @class */ (function () {
     function DataPoint(lat, long, height) {
         this.lat = lat;
@@ -116,7 +122,10 @@ var DataPoint = /** @class */ (function () {
         return new three_1.Vector3(this.long, this.height / 1000.0, this.lat);
     };
     DataPoint.prototype.isInMap = function () {
-        return (this.height > 0);
+        return DataPoint.isInMap(this.height);
+    };
+    DataPoint.isInMap = function (height) {
+        return (height > 2);
     };
     return DataPoint;
 }());
@@ -1207,16 +1216,16 @@ var jquery_1 = __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jqu
 var CHeightAPIShared_1 = __webpack_require__(/*! ./CHeightAPIShared */ "./js/CHeightAPIShared.ts");
 var PatchHeightMap = /** @class */ (function () {
     function PatchHeightMap(scene) {
+        this.group = new three_1.Group();
         this.material = new three_1.MeshBasicMaterial({ color: 0x333333, wireframe: true });
-        this.batchSize = 16;
+        this.batchSize = 64;
         this.patches = {};
         this.enhancableList = [];
         this.scene = scene;
-        this.loadInitialMap();
-    }
-    PatchHeightMap.prototype.loadInitialMap = function () {
+        this.scene.add(this.group);
+        this.group.rotateY(-Math.PI / 2);
         this.loadMapSubset(0, 0);
-    };
+    }
     PatchHeightMap.prototype.loadNextMapSubset = function () {
         if (this.enhancableList.length === 0)
             return;
@@ -1227,7 +1236,7 @@ var PatchHeightMap = /** @class */ (function () {
         var _this = this;
         if (!resolution)
             resolution = 0;
-        jquery_1.ajax('/', {
+        jquery_1.ajax('', {
             contentType: 'application/vnd.api+json',
             method: 'GET',
             data: {
@@ -1237,6 +1246,8 @@ var PatchHeightMap = /** @class */ (function () {
                 'batch-size': this.batchSize
             },
             success: function (msg) {
+                if (_this.group.position.x === 0)
+                    _this.group.position.set(msg.meta.maxLong, 0, 0);
                 // convert to DataPoint class
                 var matrix = msg.data.attributes.matrix;
                 for (var y = 0; y < matrix.length; y++) {
@@ -1268,12 +1279,12 @@ var PatchHeightMap = /** @class */ (function () {
         geometry.computeBoundingBox();
         var mesh = new three_1.Mesh(geometry, this.material);
         this.patches[resolution + "-" + matrix[0][0].lat + "-" + matrix[0][0].long] = mesh;
-        this.scene.add(mesh);
+        this.group.add(mesh);
         // remove lower resolution patch that has been enhanced
         var oldKey = resolution * Math.sqrt(this.batchSize) + "-" + matrix[0][0].lat + "-" + matrix[0][0].long;
         if (oldKey in this.patches) {
             var oldMesh = this.patches[oldKey];
-            this.scene.remove(oldMesh);
+            this.group.remove(oldMesh);
             oldMesh.geometry.dispose();
             delete this.patches[oldKey];
         }
@@ -1319,53 +1330,13 @@ function main() {
     var scene = new THREE.Scene();
     scene.add(camera);
     var map = new PatchHeightMap_1.default(scene);
-    // add sphere
-    var material = new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true });
-    // light
-    var pointLight = new THREE.PointLight(0xFFFFFF);
-    pointLight.position.x = 10;
-    pointLight.position.y = 50;
-    pointLight.position.z = 130;
-    scene.add(pointLight);
+    camera.position.set(0, 400, -400);
     function update() {
         controls.update();
         renderer.render(scene, camera);
         requestAnimationFrame(update);
     }
     requestAnimationFrame(update);
-    console.log('Done.');
-    loadHeightData();
-    function loadHeightData() {
-        $.ajax({
-            url: "hoehe_test.csv",
-            dataType: "text",
-            success: function (data) {
-                data = data.split('\n');
-                for (var i = 0; i < data.length; i++) {
-                    if (data[i] === "") {
-                        data.splice(i, 1);
-                        continue;
-                    }
-                    data[i] = data[i].split(',');
-                    for (var j = 0; j < data[i].length; j++)
-                        data[i][j] = parseInt(data[i][j]);
-                }
-                displayHeightMap(data);
-            }
-        });
-    }
-    function displayHeightMap(data) {
-        var geometry = new THREE.PlaneGeometry(data.length, data[0].length, data.length, data[0].length);
-        var plane = new THREE.Mesh(geometry, material);
-        for (var x = 0; x < data.length; x++) {
-            for (var y = 0; y < data[0].length; y++) {
-                plane.geometry.vertices[x * data[0].length + y].z = data[x][y] / 1000.0;
-            }
-        }
-        plane.rotation.x = -Math.PI / 2;
-        camera.position.set(0, data.length, -data.length);
-        //scene.add(plane);
-    }
 }
 
 

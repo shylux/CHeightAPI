@@ -1,5 +1,12 @@
 import {Vector3} from "three";
 
+export class HeightMapMetadata {
+    minLat: number;
+    maxLat: number;
+    minLong: number;
+    maxLong: number;
+}
+
 export default class DataPoint {
     lat: number;
     long: number;
@@ -27,6 +34,10 @@ export default class DataPoint {
     }
 
     public isInMap(): boolean {
-        return (this.height > 0);
+        return DataPoint.isInMap(this.height);
+    }
+
+    public static isInMap(height: number) {
+        return (height > 2);
     }
 }

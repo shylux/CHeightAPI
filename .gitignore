@@ -2,3 +2,4 @@ height_ch_100m.csv
 hoehe_ch.csv
 .idea
 node_modules
+*.db

@@ -1,47 +1,23 @@
 import {Express, Request, Response, NextFunction} from "express";
-import * as fs from "fs";
-import DataPoint from "./CHeightAPIShared";
+import DataPoint, {HeightMapMetadata} from "./CHeightAPIShared";
+import HeightMapDataStore from "./HeightMapDataStore";
 
 
 export default class CHeightAPI {
     public express: Express;
 
-    private readonly data_source_path: string = './hoehe_test.csv';
-    private data: number[][];
+    private readonly store = new HeightMapDataStore();
+    private metadata: HeightMapMetadata;
 
     constructor() {
-        let csv_string = this.loadCSVFile();
-        this.data = this.parseCSVString(csv_string);
-    }
+        this.store.connect().then(() => {
+            console.log('connected');
 
-    private loadCSVFile(): string {
-        process.stdout.write(`Started loading data source: ${this.data_source_path}... `);
-        let csv_data: string = fs.readFileSync(this.data_source_path, 'utf8');
-        process.stdout.write(`OK (${csv_data.length} bytes)\n`);
-        return csv_data;
-    }
-
-    private parseCSVString(csv_string: string): number[][] {
-        csv_string = csv_string.replace(/^\s+|\s+$/g, ''); // trim newlines
-
-        let rows: string[] = csv_string.split('\n');
-
-        let matrix: number[][] = [];
-        for (let i = 0; i < rows.length; i++) {
-            if (rows[i] === "") {
-                rows.splice(i, 1);
-                continue;
-            }
-            process.stdout.write(`\r\x1b[KParse csv data... ${(i+1)*100/rows.length}%`);
-            let row: string[] = rows[i].split(',');
-            matrix[i] = [];
-            for (let j = 0; j < row.length; j++)
-                matrix[i][j] = parseInt(row[j]);
-        }
-
-        // throw `CSV parse error: ${parse_results.errors}`;
-        process.stdout.write(`\nLoaded ${matrix.length}x${matrix[0].length} Matrix\n`);
-        return matrix;
+            return this.store.loadMetadata();
+        }).then((res) => {
+            console.log('metadata loaded');
+            this.metadata = res;
+        });
     }
 
     public handleRequest(req: Request, res: Response, next: NextFunction): void {
@@ -60,28 +36,30 @@ export default class CHeightAPI {
             if (batchEdgeLength % 1 !== 0) throw "batch-size has to be a power of 2.";
 
             if (resolution === 0) { // pick resolution, that whole map fits in
-                let maxEdgeLength = Math.max(this.data.length, this.data[0].length);
-                let detailLevels: number = Math.ceil(this.getBaseLog(batchEdgeLength, maxEdgeLength)) - 1;
+                let maxEdgeLength = Math.max(this.metadata.maxLat, this.metadata.maxLong);
+                let detailLevels: number = Math.ceil(CHeightAPI.getBaseLog(batchEdgeLength, maxEdgeLength)) - 1;
                 resolution = Math.pow(batchEdgeLength, detailLevels);
             }
 
-            let matrix: DataPoint[][] = this.loadMapSubset(lat, long, resolution, batchEdgeLength);
-
-            res.json({
-                data: {
-                    type: 'height-data',
-                    id: `${resolution}-${batchSize}-${lat}-${long}`,
-                    attributes: {
-                        resolution: resolution,
-                        'batch-size': batchSize,
-                        matrix: matrix
+            this.loadMapSubset(lat, long, resolution, batchEdgeLength).then((data: DataPoint[][]) => {
+                res.json({
+                    data: {
+                        type: 'height-data',
+                        id: `${resolution}-${batchSize}-${lat}-${long}`,
+                        attributes: {
+                            resolution: resolution,
+                            'batch-size': batchSize,
+                            matrix: data
+                        }
+                    },
+                    meta: {
+                        maxLat: this.metadata.maxLat,
+                        maxLong: this.metadata.maxLong
                     }
-                },
-                meta: {
-                    maxLat: this.data.length,
-                    maxLong: this.data[0].length
-                }
+                });
             });
+
+
         } catch(err) {
             if (typeof err === 'string') {
                 res.status(400);
@@ -124,26 +102,26 @@ export default class CHeightAPI {
         return params_int as [number, number, number, number];
     }
 
-    private loadMapSubset(lat: number, long: number, resolution: number, batchEdgeLength: number): DataPoint[][] {
+    private async loadMapSubset(lat: number, long: number, resolution: number, batchEdgeLength: number): Promise<DataPoint[][]> {
         let matrix: DataPoint[][] = [];
         for (let y = 0, ilat = lat; y <= batchEdgeLength; y++, ilat += resolution) {
             matrix[y] = [];
             for (let x = 0, ilong = long; x <= batchEdgeLength; x++, ilong += resolution) {
-                matrix[y][x] = this.getDataPoint(ilat, ilong);
+                matrix[y][x] = await this.getDataPoint(ilat, ilong);
             }
         }
         return matrix;
     }
 
-    private getDataPoint(lat: number, long: number): DataPoint {
+    private async getDataPoint(lat: number, long: number): Promise<DataPoint> {
         let height: number = -1;
-        if (lat >= 0 && lat < this.data.length &&
-            long >=0 && long < this.data[0].length)
-            height = this.data[lat][long];
+        if (lat >= this.metadata.minLat && lat <= this.metadata.maxLat &&
+            long >= this.metadata.minLong && long <= this.metadata.maxLong)
+            height = await this.store.get(lat, long);
         return new DataPoint(lat, long, height);
     }
 
-    private getBaseLog(base: number, val: number): number {
+    private static getBaseLog(base: number, val: number): number {
         return Math.log(val) / Math.log(base);
     }
 }
