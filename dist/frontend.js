@@ -119,13 +119,13 @@ var DataPoint = /** @class */ (function () {
     };
     DataPoint.prototype.vector3 = function () {
         //TODO: move scale to backend
-        return new three_1.Vector3(this.long, this.height / 1000.0, this.lat);
+        return new three_1.Vector3(this.long, this.height / 50.0, this.lat);
     };
     DataPoint.prototype.isInMap = function () {
         return DataPoint.isInMap(this.height);
     };
     DataPoint.isInMap = function (height) {
-        return (height > 2);
+        return (height > 100);
     };
     return DataPoint;
 }());
@@ -1214,22 +1214,41 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var jquery_1 = __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js");
 var CHeightAPIShared_1 = __webpack_require__(/*! ./CHeightAPIShared */ "./js/CHeightAPIShared.ts");
+var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var DEBUG = false;
 var PatchHeightMap = /** @class */ (function () {
-    function PatchHeightMap(scene) {
-        this.group = new three_1.Group();
-        this.material = new three_1.MeshBasicMaterial({ color: 0x333333, wireframe: true });
+    function PatchHeightMap(container) {
+        // logic stuff
         this.batchSize = 64;
         this.patches = {};
-        this.enhancableList = [];
-        this.scene = scene;
-        this.scene.add(this.group);
-        this.group.rotateY(-Math.PI / 2);
+        this.enhanceableList = [];
+        // display stuff
+        this.renderer = new THREE.WebGLRenderer();
+        this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 10000000);
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.scene = new THREE.Scene();
+        this.group = new three_1.Group();
+        this.material = new three_1.MeshBasicMaterial({ color: 0x333333, wireframe: true });
+        this.container = container;
+        this.setupTHREE();
         this.loadMapSubset(0, 0);
     }
+    PatchHeightMap.prototype.setupTHREE = function () {
+        this.renderer.setSize(this.container.width(), this.container.height());
+        this.container.append(this.renderer.domElement);
+        this.scene.add(this.camera);
+        this.scene.add(this.group);
+        requestAnimationFrame(this.redraw.bind(this));
+    };
+    PatchHeightMap.prototype.redraw = function () {
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+        requestAnimationFrame(this.redraw.bind(this));
+    };
     PatchHeightMap.prototype.loadNextMapSubset = function () {
-        if (this.enhancableList.length === 0)
+        if (this.enhanceableList.length === 0)
             return;
-        var _a = this.enhancableList.shift(), point = _a[0], resolution = _a[1];
+        var _a = this.enhanceableList.shift(), point = _a[0], resolution = _a[1];
         this.loadMapSubset(point.lat, point.long, resolution);
     };
     PatchHeightMap.prototype.loadMapSubset = function (lat, long, resolution) {
@@ -1246,8 +1265,27 @@ var PatchHeightMap = /** @class */ (function () {
                 'batch-size': this.batchSize
             },
             success: function (msg) {
-                if (_this.group.position.x === 0)
-                    _this.group.position.set(msg.meta.maxLong, 0, 0);
+                if (_this.group.position.x === 0) {
+                    var width = msg.meta.maxLong - msg.meta.minLong;
+                    var length_1 = msg.meta.maxLat - msg.meta.minLat;
+                    var max = Math.max(width, length_1);
+                    //this.group.position.set(msg.meta.maxLong/2, 0, -msg.meta.maxLat/2);
+                    _this.group.position.set(msg.meta.maxLat - length_1 / 2, 0, -msg.meta.maxLong + width / 2);
+                    _this.group.rotateY(-Math.PI / 2);
+                    _this.camera.position.set(0, max * 1.5, -max / 3);
+                    _this.camera.aspect = length_1 / width;
+                    if (DEBUG) {
+                        var geometry = new three_1.Geometry();
+                        geometry.vertices.push(new three_1.Vector3(msg.meta.minLong, 0, msg.meta.minLat));
+                        geometry.vertices.push(new three_1.Vector3(msg.meta.maxLong, 0, msg.meta.minLat));
+                        geometry.vertices.push(new three_1.Vector3(msg.meta.minLong, 0, msg.meta.maxLat));
+                        geometry.vertices.push(new three_1.Vector3(msg.meta.maxLong, 0, msg.meta.maxLat));
+                        geometry.faces.push(new three_1.Face3(0, 1, 3), new three_1.Face3(0, 3, 2));
+                        geometry.computeBoundingBox();
+                        var mesh = new three_1.Mesh(geometry, _this.material);
+                        _this.group.add(mesh);
+                    }
+                }
                 // convert to DataPoint class
                 var matrix = msg.data.attributes.matrix;
                 for (var y = 0; y < matrix.length; y++) {
@@ -1267,7 +1305,7 @@ var PatchHeightMap = /** @class */ (function () {
                 // the four points of the segment: orig, down, right, diag
                 var segment = [matrix[y][x], matrix[y + 1][x], matrix[y][x + 1], matrix[y + 1][x + 1]];
                 if (resolution > 1 && segment.some(function (point) { return point.isInMap(); }))
-                    this.enhancableList.push([matrix[y][x], resolution / Math.sqrt(this.batchSize)]);
+                    this.enhanceableList.push([matrix[y][x], resolution / Math.sqrt(this.batchSize)]);
                 // check if the current segment is complete (no datapoints out of map)
                 if (!segment.every(function (point) { return point.isInMap(); }))
                     continue;
@@ -1308,35 +1346,12 @@ exports.default = PatchHeightMap;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var $ = __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js");
-var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 __webpack_require__(/*! ./OrbitControls.js */ "./js/OrbitControls.js");
 var PatchHeightMap_1 = __webpack_require__(/*! ./PatchHeightMap */ "./js/PatchHeightMap.ts");
-$(document).ready(main);
+$(main);
 function main() {
     var container = $('#container');
-    // Set the scene size.
-    var WIDTH = container.width();
-    var HEIGHT = container.height();
-    // Set some camera attributes.
-    var VIEW_ANGLE = 45;
-    var ASPECT = WIDTH / HEIGHT;
-    var NEAR = 0.1;
-    var FAR = 100000;
-    var renderer = new THREE.WebGLRenderer();
-    renderer.setSize(WIDTH, HEIGHT);
-    container.append(renderer.domElement);
-    var camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
-    var controls = new THREE.OrbitControls(camera, renderer.domElement);
-    var scene = new THREE.Scene();
-    scene.add(camera);
-    var map = new PatchHeightMap_1.default(scene);
-    camera.position.set(0, 400, -400);
-    function update() {
-        controls.update();
-        renderer.render(scene, camera);
-        requestAnimationFrame(update);
-    }
-    requestAnimationFrame(update);
+    var map = new PatchHeightMap_1.default(container);
 }
 
 

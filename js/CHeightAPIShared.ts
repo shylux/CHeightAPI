@@ -6,6 +6,8 @@ export class HeightMapMetadata {
     maxLat: number;
     minLong: number;
     maxLong: number;
+    minHeight: number;
+    maxHeight: number;
 }
 
 export default class DataPoint {
@@ -31,7 +33,7 @@ export default class DataPoint {
 
     public vector3(): Vector3 {
         //TODO: move scale to backend
-        return new Vector3(this.long, this.height/1000.0, this.lat);
+        return new Vector3(this.long, this.height/50.0, this.lat);
     }
 
     public isInMap(): boolean {
@@ -39,6 +41,6 @@ export default class DataPoint {
     }
 
     public static isInMap(height: number) {
-        return (height > 2);
+        return (height > 100);
     }
 }

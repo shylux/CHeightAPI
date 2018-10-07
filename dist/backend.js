@@ -178,7 +178,9 @@ var CHeightAPI = /** @class */ (function () {
                     },
                     meta: {
                         maxLat: _this.metadata.maxLat,
-                        maxLong: _this.metadata.maxLong
+                        maxLong: _this.metadata.maxLong,
+                        minLat: _this.metadata.minLat,
+                        minLong: _this.metadata.minLong
                     }
                 });
             });
@@ -315,13 +317,13 @@ var DataPoint = /** @class */ (function () {
     };
     DataPoint.prototype.vector3 = function () {
         //TODO: move scale to backend
-        return new three_1.Vector3(this.long, this.height / 1000.0, this.lat);
+        return new three_1.Vector3(this.long, this.height / 50.0, this.lat);
     };
     DataPoint.prototype.isInMap = function () {
         return DataPoint.isInMap(this.height);
     };
     DataPoint.isInMap = function (height) {
-        return (height > 2);
+        return (height > 100);
     };
     return DataPoint;
 }());
@@ -529,18 +531,22 @@ var HeightMapDataStore = /** @class */ (function () {
             });
         });
     };
-    HeightMapDataStore.prototype.loadMetadata = function (table_name) {
+    HeightMapDataStore.prototype.loadMetadata = function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_a) {
-                if (!table_name)
-                    table_name = this.db_data_table_name;
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        _this.db.get("SELECT minLat, maxLat, minLong, maxLong FROM " + _this.db_meta_table_name + " WHERE table_name = \"" + table_name + "\"", function (err, row) {
+                        if (_this.metadata) {
+                            resolve(_this.metadata);
+                            return;
+                        }
+                        _this.db.get("SELECT MIN(lat) as minLat,\n                                    MAX(lat) as maxLat,\n                                    MIN(long) as minLong,\n                                    MAX(long) as maxLong,\n                                    MIN(height) as minHeight,\n                                    MAX(height) as maxHeight\n                                    FROM " + _this.db_data_table_name + ";", function (err, row) {
                             if (err)
                                 reject(err);
-                            else
-                                resolve(row);
+                            else {
+                                _this.metadata = row;
+                                resolve(_this.metadata);
+                            }
                         });
                     })];
             });

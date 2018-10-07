@@ -116,14 +116,26 @@ export default class HeightMapDataStore {
         });
     }
 
-    async loadMetadata(table_name?: string): Promise<HeightMapMetadata> {
-        if (!table_name) table_name = this.db_data_table_name;
+    private metadata: HeightMapMetadata;
+    async loadMetadata(): Promise<HeightMapMetadata> {
         return new Promise<HeightMapMetadata>((resolve, reject) => {
-            this.db.get(`SELECT minLat, maxLat, minLong, maxLong FROM ${this.db_meta_table_name} WHERE table_name = "${table_name}"`, (err, row) => {
+            if (this.metadata) {
+                resolve(this.metadata);
+                return;
+            }
+            this.db.get(`SELECT MIN(lat) as minLat,
+                                    MAX(lat) as maxLat,
+                                    MIN(long) as minLong,
+                                    MAX(long) as maxLong,
+                                    MIN(height) as minHeight,
+                                    MAX(height) as maxHeight
+                                    FROM ${this.db_data_table_name};`, (err, row) => {
                 if (err)
                     reject(err);
-                else
-                    resolve(row);
+                else {
+                    this.metadata = row;
+                    resolve(this.metadata);
+                }
             });
         });
     }

@@ -54,7 +54,9 @@ export default class CHeightAPI {
                     },
                     meta: {
                         maxLat: this.metadata.maxLat,
-                        maxLong: this.metadata.maxLong
+                        maxLong: this.metadata.maxLong,
+                        minLat: this.metadata.minLat,
+                        minLong: this.metadata.minLong
                     }
                 });
             });
