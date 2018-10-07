@@ -382,7 +382,6 @@ var HeightMapDataStore = /** @class */ (function () {
     function HeightMapDataStore() {
         this.db_file = './heightdata.db';
         this.db_data_table_name = 'heightdata';
-        this.db_meta_table_name = 'metadata';
     }
     HeightMapDataStore.prototype.connect = function () {
         return __awaiter(this, void 0, void 0, function () {
@@ -416,7 +415,7 @@ var HeightMapDataStore = /** @class */ (function () {
                     case 0:
                         this.checkConnected();
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.db.exec("\n                DROP TABLE IF EXISTS " + _this.db_data_table_name + ";\n                DROP TABLE IF EXISTS " + _this.db_meta_table_name + ";\n                CREATE TABLE " + _this.db_data_table_name + " (\n                    lat INTEGER,\n                    long INTEGER,\n                    height INTEGER,\n                    PRIMARY KEY (lat, long)\n                );\n                CREATE TABLE " + _this.db_meta_table_name + " (\n                    table_name TEXT PRIMARY KEY,\n                    minLat INTEGER,\n                    maxLat INTEGER,\n                    minLong INTEGER,\n                    maxLong INTEGER \n                );", function (err) {
+                                _this.db.exec("\n                DROP TABLE IF EXISTS " + _this.db_data_table_name + ";\n                CREATE TABLE " + _this.db_data_table_name + " (\n                    lat INTEGER,\n                    long INTEGER,\n                    height INTEGER,\n                    PRIMARY KEY (lat, long)\n                );", function (err) {
                                     if (err)
                                         reject(err);
                                     else
@@ -501,33 +500,6 @@ var HeightMapDataStore = /** @class */ (function () {
                                 resolve(row.height);
                         });
                     })];
-            });
-        });
-    };
-    HeightMapDataStore.prototype.storeMeta = function (minLat, maxLat, minLong, maxLong) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        this.checkConnected();
-                        return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.db.run("INSERT INTO " + _this.db_meta_table_name + " VALUES (\"" + _this.db_data_table_name + "\", $minLat, $maxLat, $minLong, $maxLong);", {
-                                    $minLat: minLat,
-                                    $maxLat: maxLat,
-                                    $minLong: minLong,
-                                    $maxLong: maxLong
-                                }, function (err) {
-                                    if (err)
-                                        reject(err);
-                                    else
-                                        resolve();
-                                });
-                            })];
-                    case 1:
-                        _a.sent();
-                        return [2 /*return*/];
-                }
             });
         });
     };

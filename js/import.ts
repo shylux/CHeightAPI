@@ -15,9 +15,6 @@ async function loadFromCSV() {
 
     let rows: string[] = csv_string.split('\n');
 
-    let minLat: number = Number.MAX_SAFE_INTEGER, minLong: number = Number.MAX_SAFE_INTEGER;
-    let maxLat: number = Number.MIN_SAFE_INTEGER, maxLong: number = Number.MIN_SAFE_INTEGER;
-
     for (let i = 0; i < rows.length; i++) {
         if (rows[i] === "") continue;
 
@@ -30,16 +27,8 @@ async function loadFromCSV() {
                 row_data.push([i, j, height]);
             }
         }
-        if (row_data.length !== 0) {
-            minLat = Math.min(minLat, i);
-            maxLat = Math.max(maxLat, i);
-            minLong = Math.min(minLong, row_data[0][1]);
-            maxLong = Math.max(maxLong, row_data[row_data.length-1][1]);
-        }
         await store.storeAll(row_data);
     }
-
-    await store.storeMeta(minLat, maxLat, minLong, maxLong);
 
     // throw `CSV parse error: ${parse_results.errors}`;
     process.stdout.write(`\nLoaded Matrix\n`);

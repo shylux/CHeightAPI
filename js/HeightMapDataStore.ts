@@ -5,7 +5,6 @@ import DataPoint, {HeightMapMetadata} from "./CHeightAPIShared";
 export default class HeightMapDataStore {
     private readonly db_file: string = './heightdata.db';
     private readonly db_data_table_name: string = 'heightdata';
-    private readonly db_meta_table_name: string = 'metadata';
     private db: Database;
 
     async connect() {
@@ -29,19 +28,11 @@ export default class HeightMapDataStore {
         await new Promise((resolve, reject) => {
             this.db.exec(`
                 DROP TABLE IF EXISTS ${this.db_data_table_name};
-                DROP TABLE IF EXISTS ${this.db_meta_table_name};
                 CREATE TABLE ${this.db_data_table_name} (
                     lat INTEGER,
                     long INTEGER,
                     height INTEGER,
                     PRIMARY KEY (lat, long)
-                );
-                CREATE TABLE ${this.db_meta_table_name} (
-                    table_name TEXT PRIMARY KEY,
-                    minLat INTEGER,
-                    maxLat INTEGER,
-                    minLong INTEGER,
-                    maxLong INTEGER 
                 );`,
                 (err) => {
                     if (err)
@@ -94,24 +85,6 @@ export default class HeightMapDataStore {
                 if (err) reject(err);
                 else if (!row) resolve(-1);
                 else resolve(row.height);
-            });
-        });
-    }
-
-    async storeMeta(minLat: number, maxLat: number, minLong: number, maxLong: number) {
-        this.checkConnected();
-
-        await new Promise((resolve, reject) => {
-            this.db.run(`INSERT INTO ${this.db_meta_table_name} VALUES ("${this.db_data_table_name}", $minLat, $maxLat, $minLong, $maxLong);`, {
-                $minLat: minLat,
-                $maxLat: maxLat,
-                $minLong: minLong,
-                $maxLong: maxLong
-            }, (err) => {
-                if (err)
-                    reject(err);
-                else
-                    resolve();
             });
         });
     }

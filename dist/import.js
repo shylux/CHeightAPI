@@ -184,7 +184,6 @@ var HeightMapDataStore = /** @class */ (function () {
     function HeightMapDataStore() {
         this.db_file = './heightdata.db';
         this.db_data_table_name = 'heightdata';
-        this.db_meta_table_name = 'metadata';
     }
     HeightMapDataStore.prototype.connect = function () {
         return __awaiter(this, void 0, void 0, function () {
@@ -218,7 +217,7 @@ var HeightMapDataStore = /** @class */ (function () {
                     case 0:
                         this.checkConnected();
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.db.exec("\n                DROP TABLE IF EXISTS " + _this.db_data_table_name + ";\n                DROP TABLE IF EXISTS " + _this.db_meta_table_name + ";\n                CREATE TABLE " + _this.db_data_table_name + " (\n                    lat INTEGER,\n                    long INTEGER,\n                    height INTEGER,\n                    PRIMARY KEY (lat, long)\n                );\n                CREATE TABLE " + _this.db_meta_table_name + " (\n                    table_name TEXT PRIMARY KEY,\n                    minLat INTEGER,\n                    maxLat INTEGER,\n                    minLong INTEGER,\n                    maxLong INTEGER \n                );", function (err) {
+                                _this.db.exec("\n                DROP TABLE IF EXISTS " + _this.db_data_table_name + ";\n                CREATE TABLE " + _this.db_data_table_name + " (\n                    lat INTEGER,\n                    long INTEGER,\n                    height INTEGER,\n                    PRIMARY KEY (lat, long)\n                );", function (err) {
                                     if (err)
                                         reject(err);
                                     else
@@ -306,33 +305,6 @@ var HeightMapDataStore = /** @class */ (function () {
             });
         });
     };
-    HeightMapDataStore.prototype.storeMeta = function (minLat, maxLat, minLong, maxLong) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        this.checkConnected();
-                        return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.db.run("INSERT INTO " + _this.db_meta_table_name + " VALUES (\"" + _this.db_data_table_name + "\", $minLat, $maxLat, $minLong, $maxLong);", {
-                                    $minLat: minLat,
-                                    $maxLat: maxLat,
-                                    $minLong: minLong,
-                                    $maxLong: maxLong
-                                }, function (err) {
-                                    if (err)
-                                        reject(err);
-                                    else
-                                        resolve();
-                                });
-                            })];
-                    case 1:
-                        _a.sent();
-                        return [2 /*return*/];
-                }
-            });
-        });
-    };
     HeightMapDataStore.prototype.loadMetadata = function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
@@ -412,7 +384,7 @@ var CHeightAPIShared_1 = __webpack_require__(/*! ./CHeightAPIShared */ "./js/CHe
 var data_source_path = './hoehe_ch.csv';
 function loadFromCSV() {
     return __awaiter(this, void 0, void 0, function () {
-        var csv_string, rows, minLat, minLong, maxLat, maxLong, i, row, row_data, j, height;
+        var csv_string, rows, i, row, row_data, j, height;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -421,8 +393,6 @@ function loadFromCSV() {
                     process.stdout.write("OK (" + csv_string.length + " bytes)\n");
                     csv_string = csv_string.replace(/^\s+|\s+$/g, ''); // trim newlines
                     rows = csv_string.split('\n');
-                    minLat = Number.MAX_SAFE_INTEGER, minLong = Number.MAX_SAFE_INTEGER;
-                    maxLat = Number.MIN_SAFE_INTEGER, maxLong = Number.MIN_SAFE_INTEGER;
                     i = 0;
                     _a.label = 1;
                 case 1:
@@ -438,12 +408,6 @@ function loadFromCSV() {
                             row_data.push([i, j, height]);
                         }
                     }
-                    if (row_data.length !== 0) {
-                        minLat = Math.min(minLat, i);
-                        maxLat = Math.max(maxLat, i);
-                        minLong = Math.min(minLong, row_data[0][1]);
-                        maxLong = Math.max(maxLong, row_data[row_data.length - 1][1]);
-                    }
                     return [4 /*yield*/, store.storeAll(row_data)];
                 case 2:
                     _a.sent();
@@ -451,9 +415,7 @@ function loadFromCSV() {
                 case 3:
                     i++;
                     return [3 /*break*/, 1];
-                case 4: return [4 /*yield*/, store.storeMeta(minLat, maxLat, minLong, maxLong)];
-                case 5:
-                    _a.sent();
+                case 4:
                     // throw `CSV parse error: ${parse_results.errors}`;
                     process.stdout.write("\nLoaded Matrix\n");
                     return [2 /*return*/];
