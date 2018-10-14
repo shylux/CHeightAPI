@@ -4,7 +4,7 @@ module.exports = {
   watch: true,
 
   entry: {
-    frontend: "./js/frontend.ts"
+    frontend: "./js/frontend.tsx"
   },
   output: {
     filename: "[name].js",
@@ -15,7 +15,7 @@ module.exports = {
   devtool: "source-map",
 
   resolve: {
-    extensions: [".ts", ".js", ".json"]
+    extensions: [".ts", ".tsx", ".js", ".json"]
   },
 
   module: {
