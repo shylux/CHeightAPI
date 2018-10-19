@@ -1,4 +1,15 @@
-import {Face3, Geometry, Group, Mesh, MeshBasicMaterial, Scene, Vector3, WebGLRenderer} from "three";
+import {
+    Face3,
+    Geometry,
+    Group,
+    Intersection,
+    Mesh,
+    MeshBasicMaterial,
+    Scene,
+    Vector2,
+    Vector3,
+    WebGLRenderer
+} from "three";
 import {ajax} from "jquery";
 import DataPoint, {HeightMapMetadata} from "./CHeightAPIShared";
 import * as THREE from "three";
@@ -34,6 +45,7 @@ class PatchHeightMap {
     private readonly renderer: WebGLRenderer = new THREE.WebGLRenderer({alpha: true});
     private readonly camera = new THREE.PerspectiveCamera(45, 1, 0.1, 10000000);
     private readonly controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+    private readonly raycaster = new THREE.Raycaster();
     private readonly scene: Scene = new THREE.Scene();
     private group: Group = new Group();
     private readonly material = new MeshBasicMaterial({color: 0x333333, wireframe: true});
@@ -49,6 +61,7 @@ class PatchHeightMap {
     private setupTHREE() {
         this.container.append(this.renderer.domElement);
         new ResizeObserver(this.resize.bind(this)).observe(this.container.get(0));
+        this.container.on('click', this.click.bind(this));
         this.renderer.setSize(this.container.width(), this.container.height());
         this.renderer.setClearColor(0x000000, 0.5);
         this.scene.add(this.camera);
@@ -67,6 +80,23 @@ class PatchHeightMap {
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
         requestAnimationFrame(this.redraw.bind(this));
+    }
+
+    private click(event: MouseEvent) {
+        let offset: any = this.container.offset();
+        let mouse: Vector2 = new Vector2();
+        // black magic by https://threejs.org/examples/canvas_interactive_cubes.html
+        mouse.setX(( (event.clientX-offset.left) / this.renderer.domElement.clientWidth ) * 2 - 1);
+        mouse.setY(-( (event.clientY-offset.top) / this.renderer.domElement.clientHeight ) * 2 + 1);
+
+        this.raycaster.setFromCamera(mouse, this.camera);
+        let intersects: Intersection[] = this.raycaster.intersectObjects(this.group.children);
+        if (intersects.length > 0) {
+            let target: Mesh = intersects[0].object as Mesh;
+            for (let patch of this.enhanceableList) {
+                if (patch.parentGeometry === target.geometry) this.loadMapSubset(patch);
+            }
+        }
     }
 
     public setEnhanceStrategy(strategy: EnhanceStrategy) {
