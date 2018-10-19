@@ -190,14 +190,20 @@ var HeightMapDataStore = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, new Promise(function (resolve, reject) {
-                            _this.db = new sqlite3_1.Database(_this.db_file, function (err) {
-                                if (err)
-                                    reject(err);
-                                else
-                                    resolve();
-                            });
-                        })];
+                    case 0:
+                        process.stdout.write("Connecting to database...");
+                        return [4 /*yield*/, new Promise(function (resolve, reject) {
+                                _this.db = new sqlite3_1.Database(_this.db_file, function (err) {
+                                    if (err) {
+                                        process.stdout.write(" FAILED\n");
+                                        reject(err);
+                                    }
+                                    else {
+                                        process.stdout.write(" OK\n");
+                                        resolve();
+                                    }
+                                });
+                            })];
                     case 1:
                         _a.sent();
                         return [2 /*return*/];
@@ -314,11 +320,15 @@ var HeightMapDataStore = /** @class */ (function () {
                             resolve(_this.metadata);
                             return;
                         }
+                        process.stdout.write("Loading map metadata...");
                         _this.db.get("SELECT MIN(lat) as minLat,\n                                    MAX(lat) as maxLat,\n                                    MIN(long) as minLong,\n                                    MAX(long) as maxLong,\n                                    MIN(height) as minHeight,\n                                    MAX(height) as maxHeight\n                                    FROM " + _this.db_data_table_name + ";", function (err, row) {
-                            if (err)
+                            if (err) {
+                                process.stdout.write(" FAILED\n");
                                 reject(err);
+                            }
                             else {
                                 _this.metadata = row;
+                                process.stdout.write(" OK\n");
                                 resolve(_this.metadata);
                             }
                         });

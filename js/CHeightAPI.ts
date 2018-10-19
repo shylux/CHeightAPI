@@ -9,15 +9,9 @@ export default class CHeightAPI {
     private readonly store = new HeightMapDataStore();
     private metadata: HeightMapMetadata;
 
-    constructor() {
-        this.store.connect().then(() => {
-            console.log('connected');
-
-            return this.store.loadMetadata();
-        }).then((res) => {
-            console.log('metadata loaded');
-            this.metadata = res;
-        });
+    public async loadMap() {
+        await this.store.connect();
+        this.metadata = await this.store.loadMetadata();
     }
 
     public handleRequest(req: Request, res: Response, next: NextFunction): void {

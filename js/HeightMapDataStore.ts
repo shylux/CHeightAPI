@@ -8,12 +8,16 @@ export default class HeightMapDataStore {
     private db: Database;
 
     async connect() {
+        process.stdout.write(`Connecting to database...`);
         await new Promise((resolve, reject) => {
             this.db = new Database(this.db_file, function(err) {
-                if (err)
+                if (err) {
+                    process.stdout.write(` FAILED\n`);
                     reject(err);
-                else
+                } else {
+                    process.stdout.write(` OK\n`);
                     resolve();
+                }
             });
         });
     }
@@ -96,6 +100,7 @@ export default class HeightMapDataStore {
                 resolve(this.metadata);
                 return;
             }
+            process.stdout.write(`Loading map metadata...`);
             this.db.get(`SELECT MIN(lat) as minLat,
                                     MAX(lat) as maxLat,
                                     MIN(long) as minLong,
@@ -103,10 +108,12 @@ export default class HeightMapDataStore {
                                     MIN(height) as minHeight,
                                     MAX(height) as maxHeight
                                     FROM ${this.db_data_table_name};`, (err, row) => {
-                if (err)
+                if (err) {
+                    process.stdout.write(` FAILED\n`);
                     reject(err);
-                else {
+                } else {
                     this.metadata = row;
+                    process.stdout.write(` OK\n`);
                     resolve(this.metadata);
                 }
             });

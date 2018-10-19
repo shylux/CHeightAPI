@@ -135,16 +135,25 @@ var CHeightAPIShared_1 = __webpack_require__(/*! ./CHeightAPIShared */ "./js/CHe
 var HeightMapDataStore_1 = __webpack_require__(/*! ./HeightMapDataStore */ "./js/HeightMapDataStore.ts");
 var CHeightAPI = /** @class */ (function () {
     function CHeightAPI() {
-        var _this = this;
         this.store = new HeightMapDataStore_1.default();
-        this.store.connect().then(function () {
-            console.log('connected');
-            return _this.store.loadMetadata();
-        }).then(function (res) {
-            console.log('metadata loaded');
-            _this.metadata = res;
-        });
     }
+    CHeightAPI.prototype.loadMap = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0: return [4 /*yield*/, this.store.connect()];
+                    case 1:
+                        _b.sent();
+                        _a = this;
+                        return [4 /*yield*/, this.store.loadMetadata()];
+                    case 2:
+                        _a.metadata = _b.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
     CHeightAPI.prototype.handleRequest = function (req, res, next) {
         var _this = this;
         var _a;
@@ -388,14 +397,20 @@ var HeightMapDataStore = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, new Promise(function (resolve, reject) {
-                            _this.db = new sqlite3_1.Database(_this.db_file, function (err) {
-                                if (err)
-                                    reject(err);
-                                else
-                                    resolve();
-                            });
-                        })];
+                    case 0:
+                        process.stdout.write("Connecting to database...");
+                        return [4 /*yield*/, new Promise(function (resolve, reject) {
+                                _this.db = new sqlite3_1.Database(_this.db_file, function (err) {
+                                    if (err) {
+                                        process.stdout.write(" FAILED\n");
+                                        reject(err);
+                                    }
+                                    else {
+                                        process.stdout.write(" OK\n");
+                                        resolve();
+                                    }
+                                });
+                            })];
                     case 1:
                         _a.sent();
                         return [2 /*return*/];
@@ -512,11 +527,15 @@ var HeightMapDataStore = /** @class */ (function () {
                             resolve(_this.metadata);
                             return;
                         }
+                        process.stdout.write("Loading map metadata...");
                         _this.db.get("SELECT MIN(lat) as minLat,\n                                    MAX(lat) as maxLat,\n                                    MIN(long) as minLong,\n                                    MAX(long) as maxLong,\n                                    MIN(height) as minHeight,\n                                    MAX(height) as maxHeight\n                                    FROM " + _this.db_data_table_name + ";", function (err, row) {
-                            if (err)
+                            if (err) {
+                                process.stdout.write(" FAILED\n");
                                 reject(err);
+                            }
                             else {
                                 _this.metadata = row;
+                                process.stdout.write(" OK\n");
                                 resolve(_this.metadata);
                             }
                         });
@@ -547,14 +566,16 @@ var api = new CHeightAPI_1.default();
 var port = process.env.PORT || 8080;
 var app = express();
 var router = express.Router();
-router.get('/', api.handleRequest.bind(api));
-app.use('/', router);
-app.use(express.static('.'));
-app.listen(port, function (err) {
-    if (err) {
-        return console.log(err);
-    }
-    return console.log("server is listening on " + port);
+api.loadMap().then(function () {
+    router.get('/', api.handleRequest.bind(api));
+    app.use('/', router);
+    app.use(express.static('.'));
+    app.listen(port, function (err) {
+        if (err) {
+            return console.log(err);
+        }
+        return console.log("Server started on http://localhost:" + port);
+    });
 });
 
 
