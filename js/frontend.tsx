@@ -48,7 +48,8 @@ const styles: any = {
     },
     headerTitle: {
         display: 'inline-block',
-        margin: 0
+        margin: 0,
+        textShadow: '0 0 4px rgba(172,249,251,0.65)'
     },
     logo: {
         position: 'relative',
@@ -151,7 +152,8 @@ class CHeightGUI extends React.Component<any, any> {
                                     timeout: 500
                                 }}>
                             <h1 className={classes.headerTitle}>
-                                <img className={classes.logo} src={'/static/img/logo.png'} />CHeight
+                                <img className={classes.logo} src={'/static/img/logo.png'} />
+                                <Words animate>CHeight</Words>
                             </h1>
                             <div className={classes.headerControls}>
                                 <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.FIFO)}} active={strategy == EnhanceStrategy.FIFO}>Auto</Button>
