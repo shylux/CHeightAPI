@@ -3,10 +3,10 @@ import "./OrbitControls.js";
 import PatchHeightMap, {EnhanceStrategy} from "./PatchHeightMap";
 import * as React from "react";
 // @ts-ignore
-import {Arwes, Button, createSounds, createTheme, Footer, Frame, Header, SoundsProvider, ThemeProvider, Appear, Link, Words, Logo} from "arwes";
+import {Arwes, Button, createSounds, createTheme, Footer, Frame, Header, SoundsProvider, ThemeProvider, Appear, Link, Words, Logo, Image} from "arwes";
 import injectSheet from "react-jss";
 import ReactDOM = require("react-dom");
-import { GithubCircleIcon } from 'mdi-react';
+import {GithubCircleIcon, PollIcon} from 'mdi-react';
 
 
 $(main);
@@ -50,13 +50,20 @@ const styles: any = {
         display: 'inline-block',
         margin: 0
     },
+    logo: {
+        position: 'relative',
+        top: 4,
+        height: '1em',
+        width: '1em',
+        marginRight: 5
+    },
     headerControls: {
         display: 'inline-block',
         float: 'right',
-        marginTop: '10px'
+        marginTop: 10
     },
     content: {
-        margin: '20px',
+        margin: 20,
         flexBasis: '100%',
         flexShrink: 1,
 
@@ -71,7 +78,7 @@ const styles: any = {
         }
     },
     renderer: {
-        padding: '2px',
+        padding: 2,
         width: '100%',
         height: '100%'
     },
@@ -92,14 +99,14 @@ const styles: any = {
             },
             'svg': {
                 position: 'relative',
-                marginRight: '5px',
-                top: '5px'
+                marginRight: 5,
+                top: 5
             }
         }
     },
-    logo: {
-        width: '24px',
-        height: '24px',
+    arwesLogo: {
+        width: 24,
+        height: 24,
         top: '-1px !important'
     }
 };
@@ -143,7 +150,9 @@ class CHeightGUI extends React.Component<any, any> {
                                     onEntered: () => this.setState({ framed: true }),
                                     timeout: 500
                                 }}>
-                            <h1 className={classes.headerTitle}>CHeight</h1>
+                            <h1 className={classes.headerTitle}>
+                                <img className={classes.logo} src={'/static/img/logo.png'} />CHeight
+                            </h1>
                             <div className={classes.headerControls}>
                                 <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.FIFO)}} active={strategy == EnhanceStrategy.FIFO}>Auto</Button>
                                 <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.EDGE)}} active={strategy == EnhanceStrategy.EDGE}>Edge</Button>
@@ -164,7 +173,7 @@ class CHeightGUI extends React.Component<any, any> {
                                     <Words animate>Source</Words>
                                 </Link>
                                 <Link href='https://arwesjs.org'>
-                                    <Logo className={classes.logo} animate />
+                                    <Logo className={classes.arwesLogo} animate />
                                     <Words animate>Arwes</Words>
                                 </Link>
                             </div>
