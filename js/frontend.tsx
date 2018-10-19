@@ -124,56 +124,54 @@ class CHeightGUI extends React.Component<any, any> {
         const { strategy, framed } = this.state;
 
         return (
-
-                <Arwes
-                    animate
-                    animation={{appear: false, timeout: 0}}
-                    pattern='./static/img/glow.png'
-                    background={{
-                        small: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
-                        medium: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
-                        large: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
-                        xlarge: '/static/img/Discovery_Luzern_Zurich-original2.jpg'
-                    }}>
-                    {(anim: any) => (
-                        <div className={classes.container}>
-                            <Header className={classes.header}
-                                    animate
-                                    show={anim.entered}
-                                    animation={{
-                                        onEntered: () => this.setState({ framed: true }),
-                                        timeout: 500
-                                    }}>
-                                <h1 className={classes.headerTitle}>CHeight</h1>
-                                <div className={classes.headerControls}>
-                                    <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.FIFO)}} active={strategy == EnhanceStrategy.FIFO}>Auto</Button>
-                                    <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.EDGE)}} active={strategy == EnhanceStrategy.EDGE}>Edge</Button>
-                                    <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.MANUAL)}} active={strategy == EnhanceStrategy.MANUAL || strategy == EnhanceStrategy.RESOLUTION_BOUND}>Stop</Button>
-                                </div>
-                            </Header>
-                            <Frame className={classes.content} animate show={framed} level={1} corners={3}>
-                                {(anim2: any) => (
-                                  <Appear animate show={anim2.entered}>
-                                    <CHeightRender strategy={this.state.strategy}></CHeightRender>
-                                  </Appear>
-                                )}
-                            </Frame>
-                            <Footer className={classes.footer} animate show={anim.entered}>
-                                <div className={classes.credits}>
-                                    <Link className='mdi mdi-github-circle' href='https://github.com/shylux/CHeightAPI'>
-                                        <GithubCircleIcon />
-                                        <Words animate>Source</Words>
-                                    </Link>
-                                    <Link href='https://arwesjs.org'>
-                                        <Logo className={classes.logo} animate />
-                                        <Words animate>Arwes</Words>
-                                    </Link>
-                                </div>
-                            </Footer>
-                        </div>
-                    )}
-                </Arwes>
-
+            <Arwes
+                animate
+                animation={{appear: false, timeout: 0}}
+                pattern='./static/img/glow.png'
+                background={{
+                    small: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
+                    medium: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
+                    large: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
+                    xlarge: '/static/img/Discovery_Luzern_Zurich-original2.jpg'
+                }}>
+                {(anim: any) => (
+                    <div className={classes.container}>
+                        <Header className={classes.header}
+                                animate
+                                show={anim.entered}
+                                animation={{
+                                    onEntered: () => this.setState({ framed: true }),
+                                    timeout: 500
+                                }}>
+                            <h1 className={classes.headerTitle}>CHeight</h1>
+                            <div className={classes.headerControls}>
+                                <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.FIFO)}} active={strategy == EnhanceStrategy.FIFO}>Auto</Button>
+                                <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.EDGE)}} active={strategy == EnhanceStrategy.EDGE}>Edge</Button>
+                                <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.MANUAL)}} active={strategy == EnhanceStrategy.MANUAL || strategy == EnhanceStrategy.RESOLUTION_BOUND}>Stop</Button>
+                            </div>
+                        </Header>
+                        <Frame className={classes.content} animate show={framed} level={1} corners={3}>
+                            {(anim2: any) => (
+                              <Appear animate show={anim2.entered}>
+                                <CHeightRender strategy={this.state.strategy}></CHeightRender>
+                              </Appear>
+                            )}
+                        </Frame>
+                        <Footer className={classes.footer} animate show={anim.entered}>
+                            <div className={classes.credits}>
+                                <Link className='mdi mdi-github-circle' href='https://github.com/shylux/CHeightAPI'>
+                                    <GithubCircleIcon />
+                                    <Words animate>Source</Words>
+                                </Link>
+                                <Link href='https://arwesjs.org'>
+                                    <Logo className={classes.logo} animate />
+                                    <Words animate>Arwes</Words>
+                                </Link>
+                            </div>
+                        </Footer>
+                    </div>
+                )}
+            </Arwes>
         )
     }
 }

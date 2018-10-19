@@ -10,6 +10,8 @@ class EnhanceablePatch {
     public origin: DataPoint;
     public resolution: number;
     public onEdge: boolean;
+    public parentGeometry: Geometry;
+    public parentFacesIdx: number[];
 }
 
 export enum EnhanceStrategy {
@@ -22,7 +24,6 @@ export enum EnhanceStrategy {
 class PatchHeightMap {
     // logic stuff
     private readonly batchSize: number = 64;
-    private patches: any = {};
     private enhanceStrategy: EnhanceStrategy = EnhanceStrategy.EDGE;
     private numberOfLevelsToDisplay: number; // used in RESOLUTION_BOUND strategy
     private enhanceableList: EnhanceablePatch[] = [];
@@ -42,7 +43,7 @@ class PatchHeightMap {
         this.container = container;
         this.setupTHREE();
         this.setNumberOfLevelsToDisplay(2);
-        this.loadMapSubset(0, 0);
+        this.loadMapSubset();
     }
 
     private setupTHREE() {
@@ -114,11 +115,16 @@ class PatchHeightMap {
             setTimeout(this.loadNextMapSubset.bind(this), 5);
             return;
         }
-        this.loadMapSubset(patch.origin.lat, patch.origin.long, patch.resolution);
+        this.loadMapSubset(patch);
     }
 
-    private loadMapSubset(lat: number, long: number, resolution?: number) {
-        if (!resolution) resolution = 0;
+    private loadMapSubset(patch?: EnhanceablePatch) {
+        let resolution: number = 0, lat: number = 0, long: number = 0;
+        if (patch) {
+            resolution = patch.resolution;
+            lat = patch.origin.lat;
+            long = patch.origin.long;
+        }
         ajax('', {
             contentType: 'application/vnd.api+json',
             method: 'GET',
@@ -160,7 +166,7 @@ class PatchHeightMap {
                 for (let y = 0; y < matrix.length; y++) {
                     matrix[y] = matrix[y].map((obj) => {return DataPoint.load(obj)});
                 }
-                this.addMapSubset(matrix, msg.data.attributes.resolution);
+                this.addMapSubset(patch, matrix, msg.data.attributes.resolution);
             },
             error: (jqXHR: JQuery.jqXHR, textStatus: string, errorThrown: string) => {
                 debugger;
@@ -169,52 +175,55 @@ class PatchHeightMap {
 
     }
 
-    private addMapSubset(matrix: DataPoint[][], resolution: number): void {
+    private addMapSubset(patch: EnhanceablePatch, matrix: DataPoint[][], resolution: number): void {
         let geometry: Geometry = new Geometry();
 
         let hasPointsInMap: boolean = matrix.some((row) => row.some((point) => point.isInMap()));
 
-        if (hasPointsInMap) {
+        if (hasPointsInMap || this.group.children.length === 0) {
             for (let y = 0; y < matrix.length - 1; y++) {
                 for (let x = 0; x < matrix[0].length - 1; x++) {
 
                     // the four points of the segment: orig, down, right, diag
                     let segment: DataPoint[] = [matrix[y][x], matrix[y + 1][x], matrix[y][x + 1], matrix[y + 1][x + 1]];
 
-                    let segmentOnEdge: boolean = !segment.every((point) => point.isInMap());
+                    let pointsInMap: number = segment.filter((point) => point.isInMap()).length;
 
+                    // check if the current segment is complete (no datapoints out of map)
+                    let facesIdx: number[] = [];
+                    if (pointsInMap === 4) {
+                        let currIdx = geometry.vertices.length;
+                        geometry.vertices.push(segment[0].vector3(), segment[1].vector3(), segment[2].vector3(), segment[3].vector3());
+                        let length = geometry.faces.push(
+                            new Face3(currIdx, currIdx + 1, currIdx + 3),
+                            new Face3(currIdx, currIdx + 3, currIdx + 2)
+                        );
+                        facesIdx = [length-2, length-1];
+                    }
+
+                    // add segment to enhancable list
                     if (resolution > 1)
                         this.enhanceableList.push({
                             origin: matrix[y][x],
                             resolution: resolution / Math.sqrt(this.batchSize),
-                            onEdge: segmentOnEdge
+                            onEdge: pointsInMap < 4,
+                            parentGeometry: geometry,
+                            parentFacesIdx: facesIdx
                         });
-
-                    // check if the current segment is complete (no datapoints out of map)
-                    if (!segment.every((point) => point.isInMap())) continue;
-
-                    let currIdx = geometry.vertices.length;
-                    geometry.vertices.push(segment[0].vector3(), segment[1].vector3(), segment[2].vector3(), segment[3].vector3());
-                    geometry.faces.push(
-                        new Face3(currIdx, currIdx + 1, currIdx + 3),
-                        new Face3(currIdx, currIdx + 3, currIdx + 2)
-                    );
                 }
             }
         }
 
         geometry.computeBoundingBox();
         let mesh: Mesh = new Mesh(geometry, this.material);
-        this.patches[`${resolution}-${matrix[0][0].lat}-${matrix[0][0].long}`] = mesh;
         this.group.add(mesh);
 
-        // remove lower resolution patch that has been enhanced
-        let oldKey = `${resolution*Math.sqrt(this.batchSize)}-${matrix[0][0].lat}-${matrix[0][0].long}`;
-        if (oldKey in this.patches) {
-            let oldMesh = this.patches[oldKey];
-            this.group.remove(oldMesh);
-            oldMesh.geometry.dispose();
-            delete this.patches[oldKey];
+        if (patch) {
+            for (let idx of patch.parentFacesIdx)
+                patch.parentGeometry.faces[idx] = new Face3(0, 0, 0);
+            if (patch.parentFacesIdx.length > 0)
+                patch.parentGeometry.elementsNeedUpdate = true;
+            //TODO: dispose mesh when fully replaced
         }
 
         setTimeout(this.loadNextMapSubset.bind(this), 5);
