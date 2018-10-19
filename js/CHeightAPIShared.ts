@@ -32,8 +32,7 @@ export default class DataPoint {
     }
 
     public vector3(): Vector3 {
-        //TODO: move scale to backend
-        return new Vector3(this.long, this.height/50.0, this.lat);
+        return new Vector3(this.long, this.height, this.lat);
     }
 
     public isInMap(): boolean {
@@ -41,6 +40,6 @@ export default class DataPoint {
     }
 
     public static isInMap(height: number) {
-        return (height > 100);
+        return (height !== -1);
     }
 }

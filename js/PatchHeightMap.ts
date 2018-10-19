@@ -40,6 +40,8 @@ class PatchHeightMap {
     private enhanceableList: EnhanceablePatch[] = [];
     private maxResolution: number;
     private metadata: HeightMapMetadata;
+    private maxWorkerCount: number = 3;
+    private workerCount: number = 0;
 
     // display stuff
     private readonly renderer: WebGLRenderer = new THREE.WebGLRenderer({alpha: true});
@@ -83,6 +85,8 @@ class PatchHeightMap {
     }
 
     private click(event: MouseEvent) {
+        if (this.enhanceStrategy !== EnhanceStrategy.MANUAL) return;
+
         let offset: any = this.container.offset();
         let mouse: Vector2 = new Vector2();
         // black magic by https://threejs.org/examples/canvas_interactive_cubes.html
@@ -103,14 +107,20 @@ class PatchHeightMap {
         if (strategy === EnhanceStrategy.RESOLUTION_BOUND && !this.numberOfLevelsToDisplay)
             throw "Use setNumberOfLevelsToDisplay to set this strategy.";
         this.enhanceStrategy = strategy;
+        this.queueNextSubset();
     }
     public setNumberOfLevelsToDisplay(numberOfLevelsToDisplay: number) {
         this.enhanceStrategy = EnhanceStrategy.RESOLUTION_BOUND;
         this.numberOfLevelsToDisplay = numberOfLevelsToDisplay;
     }
 
+    private queueNextSubset() {
+        setTimeout(this.loadNextMapSubset.bind(this), 5);
+    }
+
     private loadNextMapSubset() {
-        if (this.enhanceableList.length === 0) return;
+        if (this.workerCount >= this.maxWorkerCount ||
+            this.enhanceableList.length === 0) return;
 
         let patch: EnhanceablePatch;
         switch (this.enhanceStrategy) {
@@ -142,10 +152,13 @@ class PatchHeightMap {
                 break;
         }
         if (!patch) {
-            setTimeout(this.loadNextMapSubset.bind(this), 5);
+            this.enhanceStrategy = EnhanceStrategy.MANUAL;
             return;
         }
         this.loadMapSubset(patch);
+        this.workerCount++;
+        // spawn new worker when the max is not reached
+        if (this.workerCount < this.maxWorkerCount) this.queueNextSubset();
     }
 
     private loadMapSubset(patch?: EnhanceablePatch) {
@@ -199,6 +212,7 @@ class PatchHeightMap {
                 this.addMapSubset(patch, matrix, msg.data.attributes.resolution);
             },
             error: (jqXHR: JQuery.jqXHR, textStatus: string, errorThrown: string) => {
+                this.workerCount--;
                 debugger;
             }
         });
@@ -210,7 +224,7 @@ class PatchHeightMap {
 
         let hasPointsInMap: boolean = matrix.some((row) => row.some((point) => point.isInMap()));
 
-        if (hasPointsInMap || this.group.children.length === 0) {
+        if (hasPointsInMap || this.group.children.length <= 1) {
             for (let y = 0; y < matrix.length - 1; y++) {
                 for (let x = 0; x < matrix[0].length - 1; x++) {
 
@@ -256,7 +270,9 @@ class PatchHeightMap {
             //TODO: dispose mesh when fully replaced
         }
 
-        setTimeout(this.loadNextMapSubset.bind(this), 5);
+        // finish worker and queue next
+        this.workerCount--;
+        this.queueNextSubset();
     }
 }
 

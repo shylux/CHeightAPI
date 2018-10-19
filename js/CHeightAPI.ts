@@ -4,7 +4,6 @@ import HeightMapDataStore from "./HeightMapDataStore";
 
 
 export default class CHeightAPI {
-    public express: Express;
 
     private readonly store = new HeightMapDataStore();
     private metadata: HeightMapMetadata;

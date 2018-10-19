@@ -158,7 +158,7 @@ class CHeightGUI extends React.Component<any, any> {
                             <div className={classes.headerControls}>
                                 <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.FIFO)}} active={strategy == EnhanceStrategy.FIFO}>Auto</Button>
                                 <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.EDGE)}} active={strategy == EnhanceStrategy.EDGE}>Edge</Button>
-                                <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.MANUAL)}} active={strategy == EnhanceStrategy.MANUAL || strategy == EnhanceStrategy.RESOLUTION_BOUND}>Stop</Button>
+                                <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.MANUAL)}} active={strategy == EnhanceStrategy.MANUAL || strategy == EnhanceStrategy.RESOLUTION_BOUND}>Manual</Button>
                             </div>
                         </Header>
                         <Frame className={classes.content} animate show={framed} level={1} corners={3}>

@@ -118,14 +118,13 @@ var DataPoint = /** @class */ (function () {
             this.height === other.height);
     };
     DataPoint.prototype.vector3 = function () {
-        //TODO: move scale to backend
-        return new three_1.Vector3(this.long, this.height / 50.0, this.lat);
+        return new three_1.Vector3(this.long, this.height, this.lat);
     };
     DataPoint.prototype.isInMap = function () {
         return DataPoint.isInMap(this.height);
     };
     DataPoint.isInMap = function (height) {
-        return (height > 100);
+        return (height !== -1);
     };
     return DataPoint;
 }());
@@ -180,10 +179,14 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var sqlite3_1 = __webpack_require__(/*! sqlite3 */ "sqlite3");
+var DB_FILE = process.env.DB_FILE || './heightdata.db';
+var TABLE_NAME = process.env.TABLE_NAME || 'heightdata';
+// Indicates the resolution of the data set. The number is the amount of meters between each data point.
+// In this case i have the swiss height map with a data point every 25 meters.
+// Since my height values are in decimeter i have to add a x10 modifier.
+var RESOLUTION = parseInt(process.env.RESOLUTION) || 250.0;
 var HeightMapDataStore = /** @class */ (function () {
     function HeightMapDataStore() {
-        this.db_file = './heightdata.db';
-        this.db_data_table_name = 'heightdata';
     }
     HeightMapDataStore.prototype.connect = function () {
         return __awaiter(this, void 0, void 0, function () {
@@ -191,9 +194,9 @@ var HeightMapDataStore = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        process.stdout.write("Connecting to database...");
+                        process.stdout.write("Connecting to database " + DB_FILE + " (" + TABLE_NAME + ")...");
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.db = new sqlite3_1.Database(_this.db_file, function (err) {
+                                _this.db = new sqlite3_1.Database(DB_FILE, function (err) {
                                     if (err) {
                                         process.stdout.write(" FAILED\n");
                                         reject(err);
@@ -223,7 +226,7 @@ var HeightMapDataStore = /** @class */ (function () {
                     case 0:
                         this.checkConnected();
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.db.exec("\n                DROP TABLE IF EXISTS " + _this.db_data_table_name + ";\n                CREATE TABLE " + _this.db_data_table_name + " (\n                    lat INTEGER,\n                    long INTEGER,\n                    height INTEGER,\n                    PRIMARY KEY (lat, long)\n                );", function (err) {
+                                _this.db.exec("\n                DROP TABLE IF EXISTS " + TABLE_NAME + ";\n                CREATE TABLE " + TABLE_NAME + " (\n                    lat INTEGER,\n                    long INTEGER,\n                    height INTEGER,\n                    PRIMARY KEY (lat, long)\n                );", function (err) {
                                     if (err)
                                         reject(err);
                                     else
@@ -247,7 +250,7 @@ var HeightMapDataStore = /** @class */ (function () {
                         this.checkConnected();
                         if (rawPoints.length === 0)
                             return [2 /*return*/];
-                        query = "INSERT INTO " + this.db_data_table_name + " VALUES ";
+                        query = "INSERT INTO " + TABLE_NAME + " VALUES ";
                         query_parts = [];
                         for (i = 0; i < rawPoints.length; i++) {
                             query_parts[i] = "(" + rawPoints[i][0] + ", " + rawPoints[i][1] + ", " + rawPoints[i][2] + ")";
@@ -276,7 +279,7 @@ var HeightMapDataStore = /** @class */ (function () {
                     case 0:
                         this.checkConnected();
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.db.run("INSERT INTO " + _this.db_data_table_name + " VALUES ($lat, $long, $height);", {
+                                _this.db.run("INSERT INTO " + TABLE_NAME + " VALUES ($lat, $long, $height);", {
                                     $lat: point.lat,
                                     $long: point.long,
                                     $height: point.height
@@ -299,13 +302,13 @@ var HeightMapDataStore = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        _this.db.get("SELECT height FROM " + _this.db_data_table_name + " WHERE lat = " + lat + " AND long = " + long + ";", function (err, row) {
+                        _this.db.get("SELECT height FROM " + TABLE_NAME + " WHERE lat = " + lat + " AND long = " + long + ";", function (err, row) {
                             if (err)
                                 reject(err);
                             else if (!row)
                                 resolve(-1);
                             else
-                                resolve(row.height);
+                                resolve(row.height / RESOLUTION);
                         });
                     })];
             });
@@ -321,7 +324,7 @@ var HeightMapDataStore = /** @class */ (function () {
                             return;
                         }
                         process.stdout.write("Loading map metadata...");
-                        _this.db.get("SELECT MIN(lat) as minLat,\n                                    MAX(lat) as maxLat,\n                                    MIN(long) as minLong,\n                                    MAX(long) as maxLong,\n                                    MIN(height) as minHeight,\n                                    MAX(height) as maxHeight\n                                    FROM " + _this.db_data_table_name + ";", function (err, row) {
+                        _this.db.get("SELECT MIN(lat) as minLat,\n                                    MAX(lat) as maxLat,\n                                    MIN(long) as minLong,\n                                    MAX(long) as maxLong,\n                                    MIN(height) as minHeight,\n                                    MAX(height) as maxHeight\n                                    FROM " + TABLE_NAME + ";", function (err, row) {
                             if (err) {
                                 process.stdout.write(" FAILED\n");
                                 reject(err);
