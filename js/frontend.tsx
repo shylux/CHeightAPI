@@ -6,7 +6,7 @@ import * as React from "react";
 import {Arwes, Button, createSounds, createTheme, Footer, Frame, Header, SoundsProvider, ThemeProvider, Appear, Link, Words, Logo, Image} from "arwes";
 import injectSheet from "react-jss";
 import ReactDOM = require("react-dom");
-import {GithubCircleIcon, PollIcon} from 'mdi-react';
+import {GithubCircleIcon} from 'mdi-react';
 
 
 $(main);
@@ -164,7 +164,7 @@ class CHeightGUI extends React.Component<any, any> {
                         <Frame className={classes.content} animate show={framed} level={1} corners={3}>
                             {(anim2: any) => (
                               <Appear animate show={anim2.entered}>
-                                <CHeightRender strategy={this.state.strategy}></CHeightRender>
+                                <CHeightRender strategy={this.state.strategy} />
                               </Appear>
                             )}
                         </Frame>
@@ -192,10 +192,6 @@ class CHeightGUI extends React.Component<any, any> {
 class CHeightRender extends React.Component<any, any> {
     private map: PatchHeightMap;
 
-    constructor(props: any) {
-        super(props);
-    }
-
     componentDidMount() {
         let node = $(ReactDOM.findDOMNode(this) as any);
         if (!this.map) this.map = new PatchHeightMap(node)
@@ -209,15 +205,13 @@ class CHeightRender extends React.Component<any, any> {
         const { classes } = this.props;
 
         return (
-            <div className={classes.renderer}></div>
+            <div className={classes.renderer} />
         )
     }
 }
 
 
 function main() {
-    const container = $('#container');
-
     const GUI = injectSheet(styles)(CHeightGUI);
 
     ReactDOM.render(<ThemeProvider theme={createTheme()}><SoundsProvider sounds={sounds}><GUI /></SoundsProvider></ThemeProvider>, document.querySelector('#container'));

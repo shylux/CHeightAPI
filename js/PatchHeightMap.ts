@@ -166,12 +166,12 @@ class PatchHeightMap {
             },
             success: (msg: any) => {
                 if (this.group.position.x === 0) {
+                    // set initial camera position
                     this.metadata = msg.meta;
                     let width: number = this.metadata.maxLong - this.metadata.minLong;
                     let length: number = this.metadata.maxLat - this.metadata.minLat;
                     let max = Math.max(width, length);
 
-                    //this.group.position.set(msg.meta.maxLong/2, 0, -msg.meta.maxLat/2);
                     this.group.position.set(this.metadata.maxLat-length/2, 0, -this.metadata.maxLong+width/2);
                     this.group.rotateY(-Math.PI / 2);
                     this.camera.position.set(0, max/1.5, -max/2);
