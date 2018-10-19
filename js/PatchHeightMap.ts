@@ -1,8 +1,8 @@
 import {
-    Face3,
+    Face3, Frustum,
     Geometry,
     Group,
-    Intersection,
+    Intersection, Matrix4,
     Mesh,
     MeshBasicMaterial,
     Scene,
@@ -26,7 +26,7 @@ class EnhanceablePatch {
 }
 
 export enum EnhanceStrategy {
-    FIFO, // first in, first out
+    AUTO, // select next patch based on a formula (looking at, low res)
     MANUAL, // no automatic enhancement
     EDGE, // enhance all edges - ignore rest
     RESOLUTION_BOUND // enhance until a certain resolution is reached
@@ -40,7 +40,7 @@ class PatchHeightMap {
     private enhanceableList: EnhanceablePatch[] = [];
     private maxResolution: number;
     private metadata: HeightMapMetadata;
-    private maxWorkerCount: number = 3;
+    private maxWorkerCount: number = 1;
     private workerCount: number = 0;
 
     // display stuff
@@ -85,8 +85,6 @@ class PatchHeightMap {
     }
 
     private click(event: MouseEvent) {
-        if (this.enhanceStrategy !== EnhanceStrategy.MANUAL) return;
-
         let offset: any = this.container.offset();
         let mouse: Vector2 = new Vector2();
         // black magic by https://threejs.org/examples/canvas_interactive_cubes.html
@@ -120,12 +118,38 @@ class PatchHeightMap {
 
     private loadNextMapSubset() {
         if (this.workerCount >= this.maxWorkerCount ||
-            this.enhanceableList.length === 0) return;
+            (this.enhanceableList.length === 0 && this.workerCount > 0)) return;
 
         let patch: EnhanceablePatch;
         switch (this.enhanceStrategy) {
-            case EnhanceStrategy.FIFO:
-                patch = this.enhanceableList.shift();
+            case EnhanceStrategy.AUTO:
+                let frustum: Frustum = new Frustum();
+                this.camera.updateMatrix();
+                this.camera.updateMatrixWorld(true);
+                this.camera.matrixWorldInverse.getInverse(this.camera.matrixWorld);
+                frustum.setFromMatrix(new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse));
+
+                let point: Vector3;
+                this.raycaster.setFromCamera(new Vector2(0, 0), this.camera);
+                let intersects: Intersection[] = this.raycaster.intersectObjects(this.group.children);
+                if (intersects.length > 0) {
+                    let target: Mesh = intersects[0].object as Mesh;
+                    point = (target.geometry as Geometry).vertices[0];
+                }
+
+                let bestScore: number = Number.MAX_SAFE_INTEGER;
+                for (let entry of this.enhanceableList) {
+                    if (!frustum.containsPoint(entry.origin.vector3())) continue;
+                    if (point) {
+                        //let score = Math.abs(point.x - entry.origin.vector3().x) + Math.abs(point.z - entry.origin.vector3().z);
+                        let score = Number.MAX_SAFE_INTEGER - entry.resolution;
+                        if (score < bestScore) {
+                            bestScore = score;
+                            patch = entry;
+                        }
+                    }
+                }
+                this.enhanceableList.splice(this.enhanceableList.indexOf(patch), 1);
                 break;
             case EnhanceStrategy.RESOLUTION_BOUND:
                 let edgeSize = Math.sqrt(this.batchSize);
@@ -152,7 +176,7 @@ class PatchHeightMap {
                 break;
         }
         if (!patch) {
-            this.enhanceStrategy = EnhanceStrategy.MANUAL;
+            this.queueNextSubset();
             return;
         }
         this.loadMapSubset(patch);
@@ -260,6 +284,8 @@ class PatchHeightMap {
 
         geometry.computeBoundingBox();
         let mesh: Mesh = new Mesh(geometry, this.material);
+        mesh.updateMatrix();
+        mesh.updateMatrixWorld(true);
         this.group.add(mesh);
 
         if (patch) {
