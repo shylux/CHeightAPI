@@ -3,9 +3,10 @@ import "./OrbitControls.js";
 import PatchHeightMap, {EnhanceStrategy} from "./PatchHeightMap";
 import * as React from "react";
 // @ts-ignore
-import {Arwes, Button, createSounds, createTheme, Footer, Frame, Header, SoundsProvider, ThemeProvider} from "arwes";
+import {Arwes, Button, createSounds, createTheme, Footer, Frame, Header, SoundsProvider, ThemeProvider, Appear, Link, Words, Logo} from "arwes";
 import injectSheet from "react-jss";
 import ReactDOM = require("react-dom");
+import { GithubCircleIcon } from 'mdi-react';
 
 
 $(main);
@@ -35,22 +36,26 @@ const styles: any = {
             overflow: 'hidden'
         }
     },
-    'container': {
+    container: {
         width: '100%',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden'
     },
-    'headerTitle': {
-        display: 'inline',
-        margin: 0,
+    header: {
         padding: [5, 20]
     },
-    'headerControls': {
-        display: 'inline'
+    headerTitle: {
+        display: 'inline-block',
+        margin: 0
     },
-    'content': {
+    headerControls: {
+        display: 'inline-block',
+        float: 'right',
+        marginTop: '10px'
+    },
+    content: {
         margin: '20px',
         flexBasis: '100%',
         flexShrink: 1,
@@ -65,10 +70,37 @@ const styles: any = {
             }
         }
     },
-    'renderer': {
+    renderer: {
         padding: '2px',
         width: '100%',
         height: '100%'
+    },
+    footer: {
+        padding: [0, 20]
+    },
+    credits: {
+        float: 'right',
+        margin: [10, 0],
+        verticalAlign: 'center',
+
+        '@global': {
+            'a': {
+                height: '1em',
+                color: 'white',
+                textDecoration: 'none',
+                margin: [0, 10]
+            },
+            'svg': {
+                position: 'relative',
+                marginRight: '5px',
+                top: '5px'
+            }
+        }
+    },
+    logo: {
+        width: '24px',
+        height: '24px',
+        top: '-1px !important'
     }
 };
 
@@ -76,7 +108,8 @@ class CHeightGUI extends React.Component<any, any> {
     constructor(props: any) {
         super(props);
         this.state = {
-            strategy: EnhanceStrategy.RESOLUTION_BOUND
+            strategy: EnhanceStrategy.RESOLUTION_BOUND,
+            framed: false
         }
     }
 
@@ -88,9 +121,10 @@ class CHeightGUI extends React.Component<any, any> {
 
     public render() {
         const { classes } = this.props;
+        const { strategy, framed } = this.state;
 
         return (
-            <ThemeProvider theme={createTheme()}><SoundsProvider sounds={sounds}>
+
                 <Arwes
                     animate
                     animation={{appear: false, timeout: 0}}
@@ -103,23 +137,43 @@ class CHeightGUI extends React.Component<any, any> {
                     }}>
                     {(anim: any) => (
                         <div className={classes.container}>
-                            <Header animate show={anim.entered}>
+                            <Header className={classes.header}
+                                    animate
+                                    show={anim.entered}
+                                    animation={{
+                                        onEntered: () => this.setState({ framed: true }),
+                                        timeout: 500
+                                    }}>
                                 <h1 className={classes.headerTitle}>CHeight</h1>
                                 <div className={classes.headerControls}>
-                                    <Button onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.FIFO)}}>Auto</Button>
-                                    <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.EDGE)}}>Edge</Button>
+                                    <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.FIFO)}} active={strategy == EnhanceStrategy.FIFO}>Auto</Button>
+                                    <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.EDGE)}} active={strategy == EnhanceStrategy.EDGE}>Edge</Button>
+                                    <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.MANUAL)}} active={strategy == EnhanceStrategy.MANUAL || strategy == EnhanceStrategy.RESOLUTION_BOUND}>Stop</Button>
                                 </div>
                             </Header>
-                            <Frame className={classes.content} animate show={anim.entered} level={1} corners={3}>
-                                <CHeightRender strategy={this.state.strategy}></CHeightRender>
+                            <Frame className={classes.content} animate show={framed} level={1} corners={3}>
+                                {(anim2: any) => (
+                                  <Appear animate show={anim2.entered}>
+                                    <CHeightRender strategy={this.state.strategy}></CHeightRender>
+                                  </Appear>
+                                )}
                             </Frame>
-                            <Footer animate show={anim.entered}>
-                                <p>Arwes details</p>
+                            <Footer className={classes.footer} animate show={anim.entered}>
+                                <div className={classes.credits}>
+                                    <Link className='mdi mdi-github-circle' href='https://github.com/shylux/CHeightAPI'>
+                                        <GithubCircleIcon />
+                                        <Words animate>Source</Words>
+                                    </Link>
+                                    <Link href='https://arwesjs.org'>
+                                        <Logo className={classes.logo} animate />
+                                        <Words animate>Arwes</Words>
+                                    </Link>
+                                </div>
                             </Footer>
                         </div>
                     )}
                 </Arwes>
-            </SoundsProvider></ThemeProvider>
+
         )
     }
 }
@@ -157,10 +211,5 @@ function main() {
 
     const GUI = injectSheet(styles)(CHeightGUI);
 
-    ReactDOM.render(<GUI />, document.querySelector('#container'));
-
-
-    if (false) {
-        const map = new PatchHeightMap(container);
-    }
+    ReactDOM.render(<ThemeProvider theme={createTheme()}><SoundsProvider sounds={sounds}><GUI /></SoundsProvider></ThemeProvider>, document.querySelector('#container'));
 }
