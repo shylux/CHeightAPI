@@ -115,7 +115,6 @@ class PatchHeightMap {
     }
 
     private loadNextMapSubset(): void {
-        console.log(this.enhanceStrategy);
         if (this.workerCount >= this.maxWorkerCount ||
             (this.enhanceableList.length === 0 && this.workerCount > 0)) return;
 

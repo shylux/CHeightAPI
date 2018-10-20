@@ -166,7 +166,7 @@ class CHeightGUI extends React.Component<any, any> {
                                     timeout: 500
                                 }}>
                             <h1 className={classes.headerTitle}>
-                                <img className={classes.logo} src={'/static/img/logo.png'} />
+                                <img className={classes.logo} src={'./static/img/logo.png'} />
                                 <Words animate>CHeight</Words>
                             </h1>
                             <Button animate
