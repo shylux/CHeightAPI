@@ -151,10 +151,10 @@ class CHeightGUI extends React.Component<any, any> {
                 animation={{appear: false, timeout: 0}}
                 pattern='./static/img/glow.png'
                 background={{
-                    small: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
-                    medium: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
-                    large: '/static/img/Discovery_Luzern_Zurich-original2.jpg',
-                    xlarge: '/static/img/Discovery_Luzern_Zurich-original2.jpg'
+                    small: './static/img/Discovery_Luzern_Zurich-original2.jpg',
+                    medium: './static/img/Discovery_Luzern_Zurich-original2.jpg',
+                    large: './static/img/Discovery_Luzern_Zurich-original2.jpg',
+                    xlarge: './static/img/Discovery_Luzern_Zurich-original2.jpg'
                 }}>
                 {(anim: any) => (
                     <div className={classes.container}>
