@@ -61,7 +61,13 @@ const styles: any = {
     headerControls: {
         display: 'inline-block',
         float: 'right',
-        marginTop: 10
+        marginTop: 13
+    },
+    enhanceButton: {
+        position: 'absolute',
+        left: '50%',
+        transform: 'translate(-50%, 0)',
+        marginTop: 13
     },
     content: {
         margin: 20,
@@ -116,7 +122,8 @@ class CHeightGUI extends React.Component<any, any> {
     constructor(props: any) {
         super(props);
         this.state = {
-            strategy: EnhanceStrategy.RESOLUTION_BOUND,
+            strategy: EnhanceStrategy.AUTO,
+            levelsToDisplay: 2,
             framed: false
         }
     }
@@ -124,6 +131,13 @@ class CHeightGUI extends React.Component<any, any> {
     private switchStrategy(strategy: EnhanceStrategy) {
         this.setState({
             strategy: strategy
+        });
+    }
+
+    private enhance(): void {
+        this.setState({
+            strategy: EnhanceStrategy.AUTO,
+            levelsToDisplay: this.state.levelsToDisplay+1,
         });
     }
 
@@ -155,26 +169,30 @@ class CHeightGUI extends React.Component<any, any> {
                                 <img className={classes.logo} src={'/static/img/logo.png'} />
                                 <Words animate>CHeight</Words>
                             </h1>
+                            <Button animate
+                                    layer='alert'
+                                    className={classes.enhanceButton}
+                                    onClick={() => this.enhance()}>Enhance!</Button>
                             <div className={classes.headerControls}>
                                 <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.AUTO)}} active={strategy == EnhanceStrategy.AUTO}>Auto</Button>
                                 <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.EDGE)}} active={strategy == EnhanceStrategy.EDGE}>Edge</Button>
-                                <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.MANUAL)}} active={strategy == EnhanceStrategy.MANUAL || strategy == EnhanceStrategy.RESOLUTION_BOUND}>Manual</Button>
+                                <Button animate onClick={(e: any) => {this.switchStrategy(EnhanceStrategy.MANUAL)}} active={strategy == EnhanceStrategy.MANUAL}>Manual</Button>
                             </div>
                         </Header>
                         <Frame className={classes.content} animate show={framed} level={1} corners={3}>
                             {(anim2: any) => (
                               <Appear animate show={anim2.entered}>
-                                <CHeightRender strategy={this.state.strategy} />
+                                <CHeightRender strategy={this.state.strategy} levelsToDisplay={this.state.levelsToDisplay} />
                               </Appear>
                             )}
                         </Frame>
                         <Footer className={classes.footer} animate show={anim.entered}>
                             <div className={classes.credits}>
-                                <Link className='mdi mdi-github-circle' href='https://github.com/shylux/CHeightAPI'>
+                                <Link className='mdi mdi-github-circle' href='https://github.com/shylux/CHeightAPI' target={'_blank'}>
                                     <GithubCircleIcon />
                                     <Words animate>Source</Words>
                                 </Link>
-                                <Link href='https://arwesjs.org'>
+                                <Link href='https://arwesjs.org' target={'_blank'}>
                                     <Logo className={classes.arwesLogo} animate />
                                     <Words animate>Arwes</Words>
                                 </Link>
@@ -198,7 +216,10 @@ class CHeightRender extends React.Component<any, any> {
     }
 
     componentWillReceiveProps(newProps: any) {
-        if (this.map) this.map.setEnhanceStrategy(newProps.strategy);
+        if (this.map) {
+            this.map.setEnhanceStrategy(newProps.strategy);
+            this.map.setNumberOfLevelsToDisplay(newProps.levelsToDisplay);
+        }
     }
 
     render() {

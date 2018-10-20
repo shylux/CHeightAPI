@@ -26,21 +26,20 @@ class EnhanceablePatch {
 }
 
 export enum EnhanceStrategy {
-    AUTO, // select next patch based on a formula (looking at, low res)
+    AUTO, // enhance until a certain resolution is reached
     MANUAL, // no automatic enhancement
-    EDGE, // enhance all edges - ignore rest
-    RESOLUTION_BOUND // enhance until a certain resolution is reached
+    EDGE // enhance all edges - ignore rest
 }
 
 class PatchHeightMap {
     // logic stuff
     private readonly batchSize: number = 64;
-    private enhanceStrategy: EnhanceStrategy = EnhanceStrategy.EDGE;
-    private numberOfLevelsToDisplay: number; // used in RESOLUTION_BOUND strategy
+    private enhanceStrategy: EnhanceStrategy;
+    private numberOfLevelsToDisplay: number; // used in AUTO strategy
     private enhanceableList: EnhanceablePatch[] = [];
     private maxResolution: number;
     private metadata: HeightMapMetadata;
-    private maxWorkerCount: number = 1;
+    private maxWorkerCount: number = 3;
     private workerCount: number = 0;
 
     // display stuff
@@ -101,66 +100,39 @@ class PatchHeightMap {
         }
     }
 
-    public setEnhanceStrategy(strategy: EnhanceStrategy) {
-        if (strategy === EnhanceStrategy.RESOLUTION_BOUND && !this.numberOfLevelsToDisplay)
+    public setEnhanceStrategy(strategy: EnhanceStrategy): void {
+        if (strategy === EnhanceStrategy.AUTO && !this.numberOfLevelsToDisplay)
             throw "Use setNumberOfLevelsToDisplay to set this strategy.";
         this.enhanceStrategy = strategy;
         this.queueNextSubset();
     }
-    public setNumberOfLevelsToDisplay(numberOfLevelsToDisplay: number) {
-        this.enhanceStrategy = EnhanceStrategy.RESOLUTION_BOUND;
+    public setNumberOfLevelsToDisplay(numberOfLevelsToDisplay: number): void {
         this.numberOfLevelsToDisplay = numberOfLevelsToDisplay;
     }
 
-    private queueNextSubset() {
+    private queueNextSubset(): void {
         setTimeout(this.loadNextMapSubset.bind(this), 5);
     }
 
-    private loadNextMapSubset() {
+    private loadNextMapSubset(): void {
+        console.log(this.enhanceStrategy);
         if (this.workerCount >= this.maxWorkerCount ||
             (this.enhanceableList.length === 0 && this.workerCount > 0)) return;
 
         let patch: EnhanceablePatch;
         switch (this.enhanceStrategy) {
             case EnhanceStrategy.AUTO:
-                let frustum: Frustum = new Frustum();
-                this.camera.updateMatrix();
-                this.camera.updateMatrixWorld(true);
-                this.camera.matrixWorldInverse.getInverse(this.camera.matrixWorld);
-                frustum.setFromMatrix(new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse));
-
-                let point: Vector3;
-                this.raycaster.setFromCamera(new Vector2(0, 0), this.camera);
-                let intersects: Intersection[] = this.raycaster.intersectObjects(this.group.children);
-                if (intersects.length > 0) {
-                    let target: Mesh = intersects[0].object as Mesh;
-                    point = (target.geometry as Geometry).vertices[0];
-                }
-
-                let bestScore: number = Number.MAX_SAFE_INTEGER;
-                for (let entry of this.enhanceableList) {
-                    if (!frustum.containsPoint(entry.origin.vector3())) continue;
-                    if (point) {
-                        //let score = Math.abs(point.x - entry.origin.vector3().x) + Math.abs(point.z - entry.origin.vector3().z);
-                        let score = Number.MAX_SAFE_INTEGER - entry.resolution;
-                        if (score < bestScore) {
-                            bestScore = score;
-                            patch = entry;
-                        }
-                    }
-                }
-                this.enhanceableList.splice(this.enhanceableList.indexOf(patch), 1);
-                break;
-            case EnhanceStrategy.RESOLUTION_BOUND:
                 let edgeSize = Math.sqrt(this.batchSize);
                 let res = this.maxResolution / (edgeSize**(this.numberOfLevelsToDisplay-1));
                 for (let entry of this.enhanceableList) {
                     if (entry.resolution >= res) {
+                        if (patch && entry.resolution <= patch.resolution) continue;
                         patch = entry;
-                        this.enhanceableList.splice(this.enhanceableList.indexOf(entry), 1);
                         break;
                     }
                 }
+                if (patch)
+                    this.enhanceableList.splice(this.enhanceableList.indexOf(patch), 1);
                 break;
             case EnhanceStrategy.EDGE:
                 for (let entry of this.enhanceableList) {
@@ -185,7 +157,7 @@ class PatchHeightMap {
         if (this.workerCount < this.maxWorkerCount) this.queueNextSubset();
     }
 
-    private loadMapSubset(patch?: EnhanceablePatch) {
+    private loadMapSubset(patch?: EnhanceablePatch): void {
         let resolution: number = 0, lat: number = 0, long: number = 0;
         if (patch) {
             resolution = patch.resolution;
